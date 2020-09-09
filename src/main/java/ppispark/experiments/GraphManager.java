@@ -38,7 +38,7 @@ public class GraphManager {
 	        graph.vertices().show();
 	        graph.edges().show();
 	        return graph;
-    }
+       }
 	
 	//EXPORT GRAPH TO TSV TEXT FILE
 	public void toTsv() {}
@@ -71,7 +71,7 @@ public class GraphManager {
 		graph.vertices().show();
 		graph.edges().show();
 		return graph;
-   }
+        }
 	
 	public Dataset<Row> connectedComponent(GraphFrame graph,int degree,SparkSession spark,String CheckPath,List<String> N){
 		  Dataset<Row> id_to_degree=graph.degrees().filter("degree>"+degree);  
