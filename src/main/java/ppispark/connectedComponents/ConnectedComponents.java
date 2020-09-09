@@ -57,14 +57,14 @@ public class ConnectedComponents {
 	  boolean list=false;
 	  
 	  if (list){
-		  Dataset<Row> output=g.connectedComponent(ppi_network, 3, spark, CheckPath, N);
-		  output.show();
-		  System.out.println(output.count());
+		GraphFrame output=g.connectedComponent(ppi_network, 3, spark, CheckPath, N);
+		output.vertices().show();
+		output.edges().show();
 		  
 	  }else {
-		  Dataset<Row> output=g.connectedComponent(ppi_network, 3, spark, CheckPath, N1);
-		  output.show();
-		  System.out.println(output.count());
+		GraphFrame output=g.connectedComponent(ppi_network, 2, spark, CheckPath, N1);
+		output.vertices().show();
+		output.edges().show(); 
 	  }
 
 	
