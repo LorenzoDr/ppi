@@ -65,12 +65,12 @@ public class GraphManager {
 	//CREATE A GRAPHFRAME FROM TWO ARRAYLISTS: VERTICES AND EDGES
 	public GraphFrame fromLists (SparkSession spark,List<User> vertices,List<Relationship> edges) {
 			
-			Dataset<Row> userDataset = spark.createDataFrame(vertices, User.class);//.withColumn("new_col",functions.lit(1));
+		Dataset<Row> userDataset = spark.createDataFrame(vertices, User.class);//.withColumn("new_col",functions.lit(1));
 	        Dataset<Row> relationshipDataset = spark.createDataFrame(edges, Relationship.class);
 	        GraphFrame graph = new GraphFrame(userDataset, relationshipDataset);
-		    graph.vertices().show();
-		    graph.edges().show();
-			return graph;
+		graph.vertices().show();
+		graph.edges().show();
+		return graph;
    }
 	
 	public Dataset<Row> connectedComponent(GraphFrame graph,int degree,SparkSession spark,String CheckPath,List<String> N){
