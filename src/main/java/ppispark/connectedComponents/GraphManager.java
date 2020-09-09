@@ -71,9 +71,10 @@ public class GraphManager {
 		graph.vertices().show();
 		graph.edges().show();
 		return graph;
-   }
+       }
 	
-	public Dataset<Row> connectedComponent(GraphFrame graph,int degree,SparkSession spark,String CheckPath,List<String> N){
+	//CONNECTED COMPONENT WITH LIST
+	public GraphFrame connectedComponent(GraphFrame graph,int degree,SparkSession spark,String CheckPath,List<String> N){
 		  Dataset<Row> id_to_degree=graph.degrees().filter("degree>"+degree);  
 		  Dataset<Row> edges=graph.edges().join(id_to_degree,graph.edges().col("src").equalTo(id_to_degree.col("id")));
 		  edges=edges.withColumnRenamed("id", "id1").withColumnRenamed("degree","d1");
@@ -90,11 +91,18 @@ public class GraphManager {
 				  .reduceByKey((i1,i2)->{return i1+i2;})
 				  .max(new comparator());
 				
-		  return	 components.filter("component="+max._1);
+		  Dataset<Row> maxComponent=components.filter("component="+max._1);
+			 
+	          edges=edges.withColumnRenamed("id", "id2");
+	          edges.join(maxComponent,edges.col("src").equalTo(maxComponent.col("id"))).show();
+		  GraphFrame output=GraphFrame.fromEdges(edges);
+			 
+		  return output;
 		
 	}
 	
-	public Dataset<Row> connectedComponent(GraphFrame graph,int degree,SparkSession spark,String CheckPath,GraphFrame N){
+	//CONNECTED COMPONENT WITH SUBGRAPH
+	public GraphFrame connectedComponent(GraphFrame graph,int degree,SparkSession spark,String CheckPath,GraphFrame N){
 		 Dataset<Row> id_to_degree=graph.degrees().filter("degree>"+degree);  
 		 Dataset<Row> edges=graph.edges().join(id_to_degree,graph.edges().col("src").equalTo(id_to_degree.col("id")));
 		 edges=edges.withColumnRenamed("id", "id1").withColumnRenamed("degree","d1");
@@ -110,8 +118,13 @@ public class GraphManager {
 				  .mapToPair(t->new Tuple2<>(t._1,1))
 				  .reduceByKey((i1,i2)->{return i1+i2;})
 				  .max(new comparator());
-		
-		 return	 components.filter("component="+max._1);
+		 Dataset<Row> maxComponent=components.filter("component="+max._1);
+		 
+		 edges=edges.withColumnRenamed("id", "id2");
+		 edges.join(maxComponent,edges.col("src").equalTo(maxComponent.col("id"))).show();
+		 GraphFrame output=GraphFrame.fromEdges(edges);
+
+		 return	output;
 	}
 
 }
