@@ -4,8 +4,12 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.spark.sql.*;
 import org.graphframes.GraphFrame;
+import ppispark.connectedComponents.Ncounter;
+import ppispark.connectedComponents.comparator;
+import scala.Tuple2;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
@@ -52,23 +56,57 @@ public class Main {
 
         spark.sparkContext().setCheckpointDir("hdfs://master.local:8020/user/hduser/data/checkpoint");
 
-        System.out.println("Number of vertices: " + graph.vertices().count());
-        System.out.println("Number of edges: " + graph.edges().count());
-        System.out.println("Number of computed degrees: " + graph.degrees().count());
-        System.out.println("Number of computed triangleCounts: " + graph.triangleCount().run().count());
+//        System.out.println("Number of vertices: " + graph.vertices().count());
+//        System.out.println("Number of edges: " + graph.edges().count());
+//        System.out.println("Number of computed degrees: " + graph.degrees().count());
+//        System.out.println("Number of computed triangleCounts: " + graph.triangleCount().run().count());
+//
+//        System.out.println("Number of BFS results from Q75760 to Q16531: " + graph.bfs().fromExpr("id = 'uniprotkb:Q75760'").toExpr("id = 'uniprotkb:Q16531'").run().count());
+//        System.out.println("Number of Connected Components :" + graph.connectedComponents().run().groupBy("component").count().count());
+//
+//        ArrayList<Object> landmarks = new ArrayList<>();
+//        landmarks.add("uniprotkb:B3KV54");
+//        landmarks.add("uniprotkb:Q16531");
+//
+//        graph.shortestPaths().landmarks(landmarks).run().show(5);
+//
+//        graph.bfs().fromExpr("id = 'uniprotkb:B3KV54'").toExpr("id = 'uniprotkb:Q16531'").run().show(5);
+//
+//        graph.connectedComponents().run().show(5);
 
-        System.out.println("Number of computed triangleCounts: " + graph.triangleCount().run().count());
+        Row[] rows = (Row[]) graph.vertices().head(100);
 
-        System.out.println("Number of BFS results from Q75760 to Q16531: " + graph.bfs().fromExpr("id = 'uniprotkb:Q75760'").toExpr("id = 'uniprotkb:Q16531'").run().count());
-        // System.out.println("Number of Connected Components results: " + graph.connectedComponents().run().count());
-        System.out.println("Number of Connected Components :" + graph.connectedComponents().run().groupBy("component").count().count());
+        ArrayList<String> N = new ArrayList<>();
 
-        ArrayList<Object> landmarks = new ArrayList<>();
-        landmarks.add("uniprotkb:B3KV54");
-        landmarks.add("uniprotkb:Q16531");
+        for (Row row : rows)
+            N.add(row.getString(0));
 
-        graph.bfs().fromExpr("id = 'uniprotkb:B3KV54'").toExpr("id = 'uniprotkb:Q16531'").run().show(5);
-        graph.connectedComponents().run().show(5);
-        graph.shortestPaths().landmarks(landmarks).run().show(5);
+        System.out.println("Number of vertices of the graph: " + graph.vertices().count());
+        System.out.println("Number of vertices of the maximum connected component according to N: " + connectedComponent(graph, spark, 5, N).vertices().count());
+    }
+
+    //CONNECTED COMPONENT WITH LIST
+    public static GraphFrame connectedComponent(GraphFrame graph, SparkSession spark, int degree, List<String> N){
+        Dataset<Row> id_to_degree=graph.degrees().filter("degree>"+degree);
+        Dataset<Row> edges=graph.edges().join(id_to_degree,graph.edges().col("src").equalTo(id_to_degree.col("id")));
+        edges=edges.withColumnRenamed("id", "id1").withColumnRenamed("degree","d1");
+        edges=edges.join(id_to_degree,edges.col("dst").equalTo(id_to_degree.col("id")));
+
+        GraphFrame filtered=GraphFrame.fromEdges(edges);
+        Dataset<Row> components=filtered.connectedComponents().run();
+
+        Tuple2<Long, Integer> max=components.javaRDD()
+                .mapToPair(r->new Tuple2<>(Long.parseLong(r.get(1).toString()),(String)r.get(0).toString()))
+                .mapToPair(new Ncounter(N))
+                .reduceByKey(Integer::sum)
+                .max(new comparator());
+
+        Dataset<Row> maxComponent=components.filter("component="+max._1);
+
+        edges=edges.withColumnRenamed("id", "id2");
+        edges.join(maxComponent,edges.col("src").equalTo(maxComponent.col("id"))).show();
+
+        return GraphFrame.fromEdges(edges);
+
     }
 }

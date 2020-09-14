@@ -1,4 +1,4 @@
-package experiments;
+package ppispark.connectedComponents;
 
 import java.util.List;
 

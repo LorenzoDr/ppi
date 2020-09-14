@@ -1,19 +1,19 @@
-package experiments;
+package ppispark.connectedComponents;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.spark.graphx.Graph;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.functions;
 import org.graphframes.GraphFrame;
-import org.neo4j.spark.Neo4j;
 
+import org.neo4j.spark.Neo4j;
 import scala.Predef;
 import scala.Tuple2;
 import scala.collection.JavaConverters;
@@ -57,24 +57,25 @@ public class GraphManager {
 	
 	//EXPORT GRAPH TO NEO4J
 	public void toNeo4j(GraphFrame graph,SparkSession spark) {
-		ClassTag<Row> tag = scala.reflect.ClassTag$.MODULE$.apply(Row.class);
-		ClassTag<Row> tag1 = scala.reflect.ClassTag$.MODULE$.apply(Row.class);		
+		ClassTag<Row> row_tag = scala.reflect.ClassTag$.MODULE$.apply(Row.class);
 		Neo4j conn = new Neo4j(spark.sparkContext());
-		conn.saveGraph(graph.toGraphX(), conn.saveGraph$default$2(), conn.saveGraph$default$3(), true, tag, tag1);
+
+		// todo: to check, before: conn.saveGraph(graph.toGraphX(), conn.saveGraph$default$2(), conn.saveGraph$default$3(), true, row_tag, row_tag);
+		conn.saveGraph(graph.toGraphX(), "PPINetwork", null, true, row_tag, row_tag);
 	}
 
 	
 	
-	//CREATE A GRAPHFRAME FROM TWO ARRAYLISTS: VERTICES AND EDGES
-	public GraphFrame fromLists (SparkSession spark,List<User> vertices,List<Relationship> edges) {
-			
-		Dataset<Row> userDataset = spark.createDataFrame(vertices, User.class);//.withColumn("new_col",functions.lit(1));
-	        Dataset<Row> relationshipDataset = spark.createDataFrame(edges, Relationship.class);
-	        GraphFrame graph = new GraphFrame(userDataset, relationshipDataset);
-		graph.vertices().show();
-		graph.edges().show();
-		return graph;
-       }
+//	//CREATE A GRAPHFRAME FROM TWO ARRAYLISTS: VERTICES AND EDGES
+//	public GraphFrame fromLists (SparkSession spark,List<User> vertices,List<Relationship> edges) {
+//
+//		Dataset<Row> userDataset = spark.createDataFrame(vertices, User.class);//.withColumn("new_col",functions.lit(1));
+//	        Dataset<Row> relationshipDataset = spark.createDataFrame(edges, Relationship.class);
+//	        GraphFrame graph = new GraphFrame(userDataset, relationshipDataset);
+//		graph.vertices().show();
+//		graph.edges().show();
+//		return graph;
+//       }
 	
 	//CONNECTED COMPONENT WITH LIST
 	public GraphFrame connectedComponent(GraphFrame graph,int degree,SparkSession spark,String CheckPath,List<String> N){
@@ -105,7 +106,7 @@ public class GraphManager {
 	}
 	
 	// INTERSECTIONS BETWEEN COMPONENTS AND THE LIST N
-	public void componentsIntersection(GraphFrame graph,SparkSession spark,String CheckPath,List<String> N,int degree) throws IOException{
+	public void componentsIntersection(GraphFrame graph,SparkSession spark,String CheckPath,List<String> N,int degree) throws IOException {
 		  
 		  if(degree>=0) {
 			  Dataset<Row> id_to_degree=graph.degrees().filter("degree>"+degree);  
