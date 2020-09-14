@@ -3,6 +3,9 @@ package experiments;
 import java.util.HashMap;
 import java.util.List;
 
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.spark.graphx.Graph;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -101,6 +104,43 @@ public class GraphManager {
 		
 	}
 	
+	// INTERSECTIONS BETWEEN COMPONENTS AND THE LIST N
+	public void componentsIntersection(GraphFrame graph,SparkSession spark,String CheckPath,List<String> N,int degree) throws IOException{
+		  
+		  if(degree>=0) {
+			  Dataset<Row> id_to_degree=graph.degrees().filter("degree>"+degree);  
+			  Dataset<Row> edges=graph.edges().join(id_to_degree,graph.edges().col("src").equalTo(id_to_degree.col("id")));
+			  edges=edges.withColumnRenamed("id", "id1").withColumnRenamed("degree","d1");
+			  edges=edges.join(id_to_degree,edges.col("dst").equalTo(id_to_degree.col("id")));
+			  graph=GraphFrame.fromEdges(edges);
+		  }
+		  
+		  spark.sparkContext().setCheckpointDir(CheckPath);
+		  Dataset<Row> components=graph.connectedComponents().run();
+	
+		  
+		  JavaPairRDD<Long, Integer> intersections=components.javaRDD()
+				  .mapToPair(r->new Tuple2<>(Long.parseLong(r.get(1).toString()),(String)r.get(0).toString()))
+				  .mapToPair(new Ncounter(N))
+				  .reduceByKey((i1,i2)->{return i1+i2;});
+				  //.zipWithIndex()
+		          //.mapToPair(t->new Tuple2<>(t._2,t._1._2));
+		  
+		  FileSystem fs = FileSystem.get(spark.sparkContext().hadoopConfiguration());
+	      FSDataOutputStream out = fs.create(new Path("output.csv"));
+	      out.writeBytes("Component-ID,N"+ "\n");
+		  for(Tuple2<Long,Integer> t:intersections.collect()) {
+			  out.writeBytes(t._1+","+t._2+ "\n");
+		  }
+		  out.close();
+		 	
+	}
+	
+	
+	public void componentsIntersection(GraphFrame graph,SparkSession spark,String CheckPath,List<String> N) throws IOException{
+		 componentsIntersection(graph,spark,CheckPath,N,-1);
+	}
+	
 	//CONNECTED COMPONENT WITH SUBGRAPH
 	public GraphFrame connectedComponent(GraphFrame graph,int degree,SparkSession spark,String CheckPath,GraphFrame N){
 		 Dataset<Row> id_to_degree=graph.degrees().filter("degree>"+degree);  
@@ -126,5 +166,43 @@ public class GraphManager {
 
 		 return	output;
 	}
+	
+	// INTERSECTIONS BETWEEN COMPONENTS AND THE SUBGRAPH N
+	public void componentsIntersection(GraphFrame graph,SparkSession spark,String CheckPath,GraphFrame N,int degree) throws IOException{
+		  
+		  if(degree>=0) {
+			  Dataset<Row> id_to_degree=graph.degrees().filter("degree>"+degree);  
+			  Dataset<Row> edges=graph.edges().join(id_to_degree,graph.edges().col("src").equalTo(id_to_degree.col("id")));
+			  edges=edges.withColumnRenamed("id", "id1").withColumnRenamed("degree","d1");
+			  edges=edges.join(id_to_degree,edges.col("dst").equalTo(id_to_degree.col("id")));
+			  graph=GraphFrame.fromEdges(edges);
+		  }
+		  
+		 System.out.println(graph.vertices().count());
+		 spark.sparkContext().setCheckpointDir(CheckPath);
+		 Dataset<Row> components=graph.connectedComponents().run();
+	
+		  
+	         JavaPairRDD<Long,Integer> intersections=components.join(N.vertices(), "id")
+					  .toJavaRDD()
+					  .mapToPair(r->new Tuple2<>(Long.parseLong(r.get(1).toString()),(String)r.get(0).toString()))
+					  .mapToPair(t->new Tuple2<>(t._1,1))
+					  .reduceByKey((i1,i2)->{return i1+i2;});
+		  
+		
+		  
+		 FileSystem fs = FileSystem.get(spark.sparkContext().hadoopConfiguration());
+	         FSDataOutputStream out = fs.create(new Path("output.csv"));
+	         out.writeBytes("Component-ID,N"+ "\n");
+		 for(Tuple2<Long,Integer> t:intersections.collect()) {
+			  out.writeBytes(t._1+","+t._2+ "\n");
+		 }
+		 out.close();
+	}
+	
+	public void componentsIntersection(GraphFrame graph,SparkSession spark,String CheckPath,GraphFrame N) throws IOException{
+		 componentsIntersection(graph,spark,CheckPath,N,-1);
+	}
+
 
 }
