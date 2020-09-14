@@ -126,13 +126,13 @@ public class GraphManager {
 				  //.zipWithIndex()
 		          //.mapToPair(t->new Tuple2<>(t._2,t._1._2));
 		  
-		  FileSystem fs = FileSystem.get(spark.sparkContext().hadoopConfiguration());
-	      FSDataOutputStream out = fs.create(new Path("output.csv"));
-	      out.writeBytes("Component-ID,N"+ "\n");
-		  for(Tuple2<Long,Integer> t:intersections.collect()) {
+		 FileSystem fs = FileSystem.get(spark.sparkContext().hadoopConfiguration());
+	         FSDataOutputStream out = fs.create(new Path("output.csv"));
+	         out.writeBytes("Component-ID,N"+ "\n");
+		 for(Tuple2<Long,Integer> t:intersections.collect()) {
 			  out.writeBytes(t._1+","+t._2+ "\n");
 		  }
-		  out.close();
+		 out.close();
 		 	
 	}
 	
