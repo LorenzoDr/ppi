@@ -82,33 +82,7 @@ public class Main {
             N.add(row.getString(0));
 
         System.out.println("Number of vertices of the graph: " + graph.vertices().count());
-        System.out.println("Number of vertices of the maximum connected component according to N: " + connectedComponent(graph, spark, 5, N).vertices().count());
     }
 
-    //CONNECTED COMPONENT WITH LIST
-    public static GraphFrame connectedComponent(GraphFrame graph, int degree, List<String> N){
-        if (degree > 0) {
-            Dataset<Row> id_to_degree = graph.degrees().filter("degree>" + degree);
-            Dataset<Row> edges = graph.edges().join(id_to_degree, graph.edges().col("src").equalTo(id_to_degree.col("id")));
-            edges = edges.withColumnRenamed("id", "id1").withColumnRenamed("degree", "d1");
-            edges = edges.join(id_to_degree, edges.col("dst").equalTo(id_to_degree.col("id")));
-        }
 
-        GraphFrame filtered=GraphFrame.fromEdges(edges);
-        Dataset<Row> components=filtered.connectedComponents().run();
-
-        Tuple2<Long, Integer> max=components.javaRDD()
-                .mapToPair(r->new Tuple2<>(Long.parseLong(r.get(1).toString()),(String)r.get(0).toString()))
-                .mapToPair(new Ncounter(N))
-                .reduceByKey(Integer::sum)
-                .max(new comparator());
-
-        Dataset<Row> maxComponent=components.filter("component="+max._1);
-
-        edges=edges.withColumnRenamed("id", "id2");
-        edges.join(maxComponent,edges.col("src").equalTo(maxComponent.col("id"))).show();
-
-        return GraphFrame.fromEdges(edges);
-
-    }
 }
