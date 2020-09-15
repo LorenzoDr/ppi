@@ -24,6 +24,7 @@ public class ConnectedComponents {
 	.set("spark.neo4j.user", "neo4j").set("spark.neo4j.password", "Cirociro94");
 	
 	SparkSession spark;
+	String CheckPath;
 	
 	if (local) {
 	System.setProperty("hadoop.home.dir", "C:\\Users\\loren\\eclipse\\winutils");
@@ -31,12 +32,15 @@ public class ConnectedComponents {
 	spark = SparkSession.builder().config(sparkConf).master("local[*]")
 		// .appName("biograph")
 		.getOrCreate();
-	} else
-	spark = SparkSession.builder().master("yarn").appName("biograph").config("spark.executor.instances", "8")
-		.config("spark.executor.cores", "6").config("spark.executor.memory", "20g")
-		.config("spark.debug.maxToStringFields", "50").getOrCreate();
+	CheckPath="C://Users/loren/eclipse-worskspace/PPI-Project/data/checkpoints";
+	} else {
+		spark = SparkSession.builder().master("yarn").appName("biograph").config("spark.executor.instances", "8")
+			.config("spark.executor.cores", "6").config("spark.executor.memory", "20g")
+			.config("spark.debug.maxToStringFields", "50").getOrCreate();
+		CheckPath="hdfs://master.local:8020/user/hduser/data/checkpoint";
+	}
 	//////////////////////GRAPH FROM TSV///////////////////////////////
-	GraphManager g = new GraphManager();
+	GraphManager g = new GraphManager(spark,CheckPath);
 	GraphFrame ppi_network = g.fromTsv(spark, "data/BRCA2.tsv");
 	
 	//N is list
@@ -46,8 +50,7 @@ public class ConnectedComponents {
 	  N.add("uniprotkb:Q14565");
 	  N.add("intact:EBI-1639774");
 	  N.add("uniprotkb:Q8R4X4");
-	  String CheckPath="C://Users/loren/eclipse-worskspace/PPI-Project/data/checkpoints";
-	 
+
 	
 	  //N is a subgraph
 	  GraphFrame N1=ppi_network.filterVertices("id IN ('uniprotkb:Q39009','uniprotkb:O43502','uniprotkb:Q14565','intact:EBI-1639774','uniprotkb:Q8R4X4')");

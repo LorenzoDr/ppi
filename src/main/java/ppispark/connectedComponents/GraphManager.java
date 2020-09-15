@@ -20,7 +20,11 @@ import scala.collection.JavaConverters;
 import scala.reflect.ClassTag;
 
 public class GraphManager {
-	
+	private SparkSession spark;
+	private String CheckPath;
+	public GraphManager(SparkSession spark, String CheckPath){
+
+	}
 	//LOAD GRAPH FROM TSV FILE
 	public GraphFrame fromTsv(SparkSession spark, String path) {
 			String[] cols_names = new String[] { "src", "dst", "alt_id_A", "alt_id_B", "alias_A", "alias_B", "det_method",
