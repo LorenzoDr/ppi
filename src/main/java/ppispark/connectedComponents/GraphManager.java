@@ -1,6 +1,7 @@
 package ppispark.connectedComponents;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -209,5 +210,80 @@ public class GraphManager {
 		 componentsIntersection(graph,spark,CheckPath,N,-1);
 	}
 
+	public GraphFrame F1(GraphFrame graph, ArrayList<Object> N, int x){
+		if(x > 0){
+			Dataset<Row> paths=graph.shortestPaths().landmarks(N).run();
+			Dataset<Row> explodedPaths=paths
+					.select(paths.col("id"),org.apache.spark.sql.functions.explode(paths.col("distances")))
+					.filter("value>0 AND value<="+x)
+					.drop("key")
+					.drop("value")
+					.distinct();
+			Dataset<Row> edges=graph.edges().join(explodedPaths,graph.edges().col("src").equalTo(explodedPaths.col("id")));
+			edges=edges.withColumnRenamed("id", "id1");
+			edges=edges.join(explodedPaths,edges.col("dst").equalTo(explodedPaths.col("id")));
+			edges=edges.withColumnRenamed("id", "id2");
+			graph=GraphFrame.fromEdges(edges);
+		}
+		spark.sparkContext().setCheckpointDir(CheckPath);
 
+		Dataset<Row> components=graph.connectedComponents().run();
+
+		Tuple2<Long, Integer> max=components.javaRDD()
+				.mapToPair(r->new Tuple2<>(r.get(1),r.get(0)))
+				.mapToPair(new Ncounter2(N))
+				.reduceByKey((i1,i2)->{return i1+i2;})
+				.max(new comparator());
+
+		Dataset<Row> maxComponent=components.filter("component="+max._1);
+		Dataset<Row> filteredEdges=graph.edges().join(maxComponent,graph.edges().col("src").equalTo(maxComponent.col("id")));
+		GraphFrame output=GraphFrame.fromEdges(filteredEdges);
+
+		return output;
+	}
+
+	public GraphFrame F1(GraphFrame graph, ArrayList<Object> N){
+		return F1(graph, N,0);
+	}
+
+	public void F2(GraphFrame graph,ArrayList<Object> N,int x) throws IOException {
+
+		if(x>0) {
+			Dataset<Row> paths=graph.shortestPaths().landmarks(N).run();
+			Dataset<Row> explodedPaths=paths
+					.select(paths.col("id"),org.apache.spark.sql.functions.explode(paths.col("distances")))
+					.filter("value>0 AND value<="+x)
+					.drop("key")
+					.drop("value")
+					.distinct();
+			Dataset<Row> edges=graph.edges().join(explodedPaths,graph.edges().col("src").equalTo(explodedPaths.col("id")));
+			edges=edges.withColumnRenamed("id", "id1");
+			edges=edges.join(explodedPaths,edges.col("dst").equalTo(explodedPaths.col("id")));
+			edges=edges.withColumnRenamed("id", "id2");
+			graph=GraphFrame.fromEdges(edges);
+		}
+
+		spark.sparkContext().setCheckpointDir(CheckPath);
+		Dataset<Row> components=graph.connectedComponents().run();
+
+
+		JavaPairRDD<Long, Integer> intersections=components.javaRDD()
+				.mapToPair(r->new Tuple2<>(r.get(1),r.get(0)))
+				.mapToPair(new Ncounter2(N))
+				.reduceByKey((i1,i2)->{return i1+i2;});
+
+
+		FileSystem fs = FileSystem.get(spark.sparkContext().hadoopConfiguration());
+		FSDataOutputStream out = fs.create(new Path("output.csv"));
+		out.writeBytes("Component-ID,N"+ "\n");
+		for(Tuple2<Long,Integer> t:intersections.collect()) {
+			if(t._2>0){
+			 out.writeBytes(t._1+","+t._2+ "\n");}
+		}
+		out.close();
+	}
+
+	public void F2(GraphFrame graph, ArrayList<Object> N) throws IOException {
+		F2(graph, N,0);
+	}
 }
