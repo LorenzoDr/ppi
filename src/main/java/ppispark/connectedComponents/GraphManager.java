@@ -287,16 +287,16 @@ public class GraphManager {
 		F2(graph, N,0);
 	}
 
-	public void F3(GraphFrame graph,String node, int x){
+	public Dataset<Row> F3(GraphFrame graph,String id, int x){
 		ArrayList<Object> landmarks=new ArrayList<Object>();
-		landmarks.add(node);
+		landmarks.add(id);
 		Dataset<Row> shortestPaths=graph.shortestPaths().landmarks(landmarks).run();
 		Dataset<Row> output=shortestPaths
 				.select(shortestPaths.col("id"),org.apache.spark.sql.functions.explode(shortestPaths.col("distances")))
 				.filter("value<="+x)
 				.drop("key")
 				.drop("value");
-		output.show();
+		return output;
 	}
 
 	public GraphFrame F4(GraphFrame graph,ArrayList<Object> N, int x){
