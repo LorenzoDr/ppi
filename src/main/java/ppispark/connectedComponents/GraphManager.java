@@ -215,7 +215,7 @@ public class GraphManager {
 			Dataset<Row> paths=graph.shortestPaths().landmarks(N).run();
 			Dataset<Row> explodedPaths=paths
 					.select(paths.col("id"),org.apache.spark.sql.functions.explode(paths.col("distances")))
-					.filter("value>0 AND value<="+x)
+					.filter("value<="+x)
 					.drop("key")
 					.drop("value")
 					.distinct();
@@ -252,7 +252,7 @@ public class GraphManager {
 			Dataset<Row> paths=graph.shortestPaths().landmarks(N).run();
 			Dataset<Row> explodedPaths=paths
 					.select(paths.col("id"),org.apache.spark.sql.functions.explode(paths.col("distances")))
-					.filter("value>0 AND value<="+x)
+					.filter("value<="+x)
 					.drop("key")
 					.drop("value")
 					.distinct();
@@ -285,5 +285,17 @@ public class GraphManager {
 
 	public void F2(GraphFrame graph, ArrayList<Object> N) throws IOException {
 		F2(graph, N,0);
+	}
+
+	public void F3(GraphFrame graph,String node, int x){
+		ArrayList<Object> landmarks=new ArrayList<Object>();
+		landmarks.add(node);
+		Dataset<Row> shortestPaths=graph.shortestPaths().landmarks(landmarks).run();
+		Dataset<Row> output=shortestPaths
+				.select(shortestPaths.col("id"),org.apache.spark.sql.functions.explode(shortestPaths.col("distances")))
+				.filter("value<="+x)
+				.drop("key")
+				.drop("value");
+		output.show()
 	}
 }
