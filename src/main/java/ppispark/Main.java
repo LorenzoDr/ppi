@@ -63,11 +63,13 @@ public class Main {
         for (Row row : rows)
             N.add(row.getString(0));
 
-        System.out.println("Number of vertices of the connected component: " + F1(graph, N, 4).vertices().count());
-        System.out.println("Connected component and relative number of nodes of N: " + F2(graph, N, 0));
+        System.out.println("Number of vertices of the connected component maximizing nodes in N: " + F1(graph, N, 4).count());
+
+        for (Map.Entry<Dataset<Row>, Integer> el : F2(graph, N).entrySet())
+            System.out.println("Cardinality of the connected component and relative number of N nodes: " + el.getKey().count() + " = " + el.getValue());
     }
 
-    public static GraphFrame F1(GraphFrame graph, ArrayList<Object> N, int x) {
+    public static Dataset<Row> F1(GraphFrame graph, ArrayList<Object> N, int x) {
         if (x > 0) {
             Dataset<Row> paths = graph.shortestPaths().landmarks(N).run();
             Dataset<Row> explodedPaths = paths
@@ -91,10 +93,15 @@ public class Main {
                 .reduceByKey(Integer::sum)
                 .max(new NCountComparator());
 
-        return extractComponent(graph, components, max._1);
+        return components.filter("component=" + max._1).select("id");
     }
 
-    public static HashMap<Long, Integer> F2(GraphFrame graph, ArrayList<Object> N, int x) {
+    public static HashMap<Dataset<Row>, Integer> F2(GraphFrame graph, ArrayList<Object> N) {
+
+        return F2(graph, N, 0);
+    }
+
+    public static HashMap<Dataset<Row>, Integer> F2(GraphFrame graph, ArrayList<Object> N, int x) {
 
         if (x > 0) {
             Dataset<Row> paths = graph.shortestPaths().landmarks(N).run();
@@ -119,21 +126,14 @@ public class Main {
                 .mapToPair(new Ncounter(N))
                 .reduceByKey(Integer::sum);
 
-        HashMap<Long, Integer> component_count = new HashMap<>();
+        HashMap<Dataset<Row>, Integer> component_count = new HashMap<>();
 
         for (Tuple2<Long, Integer> t : intersections.collect()) {
             if (t._2 > 0)
-                component_count.put(t._1, t._2);
+                component_count.put(components.filter("component=" + t._1).select("id"), t._2);
         }
 
         return component_count;
-    }
-
-    private static GraphFrame extractComponent(GraphFrame graph, Dataset<Row> components, long componentID) {
-        Dataset<Row> maxComponent = components.filter("component=" + componentID);
-        Dataset<Row> filteredEdges = graph.edges().join(maxComponent, graph.edges().col("src").equalTo(maxComponent.col("id")));
-
-        return GraphFrame.fromEdges(filteredEdges);
     }
 
     private static class Ncounter implements PairFunction<Tuple2<Object,Object>, Long, Integer> {
