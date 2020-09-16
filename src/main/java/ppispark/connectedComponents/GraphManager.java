@@ -296,6 +296,27 @@ public class GraphManager {
 				.filter("value<="+x)
 				.drop("key")
 				.drop("value");
-		output.show()
+		output.show();
 	}
+
+	public GraphFrame F4(GraphFrame graph,ArrayList<Object> N, int x){
+		Dataset<Row> paths=graph.shortestPaths().landmarks(N).run();
+		Dataset<Row> explodedPaths=paths
+				.select(paths.col("id"),org.apache.spark.sql.functions.explode(paths.col("distances")))
+				.filter("value<="+x)
+				.drop("value")
+				.groupBy("id")
+				.agg(org.apache.spark.sql.functions.collect_list("key").as("key"));
+		Dataset<Row> edges=graph.edges()
+				.join(explodedPaths,graph.edges().col("src").equalTo(explodedPaths.col("id")));
+		edges=edges
+				.withColumnRenamed("id", "id1")
+				.withColumnRenamed("key","x_src");
+		edges=edges.join(explodedPaths,edges.col("dst").equalTo(explodedPaths.col("id")));
+		edges=edges.withColumnRenamed("key", "x_dst").drop("id").drop("id1");
+		graph=GraphFrame.fromEdges(edges);
+		return graph;
+	}
+
+
 }
