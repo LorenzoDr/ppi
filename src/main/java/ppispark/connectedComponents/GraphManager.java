@@ -15,6 +15,7 @@ import org.apache.spark.sql.SparkSession;
 import org.graphframes.GraphFrame;
 
 import org.neo4j.spark.Neo4j;
+import scala.Function2;
 import scala.Predef;
 import scala.Tuple2;
 import scala.collection.JavaConverters;
@@ -81,7 +82,17 @@ public class GraphManager {
 //		graph.edges().show();
 //		return graph;
 //       }
-	
+
+
+	public GraphFrame filterByDegree(GraphFrame G,int x){
+		Dataset<Row> id_to_degree=G.degrees().filter("degree>"+x);
+		Dataset<Row> edges=G.edges().join(id_to_degree,G.edges().col("src").equalTo(id_to_degree.col("id")));
+		edges=edges.withColumnRenamed("id", "id1").withColumnRenamed("degree","d1");
+		edges=edges.join(id_to_degree,edges.col("dst").equalTo(id_to_degree.col("id")));
+		GraphFrame filtered=GraphFrame.fromEdges(edges);
+		return filtered;
+	}
+
 	//CONNECTED COMPONENT WITH LIST
 	public GraphFrame connectedComponent(GraphFrame graph,int degree,SparkSession spark,String CheckPath,List<String> N){
 		  Dataset<Row> id_to_degree=graph.degrees().filter("degree>"+degree);  
@@ -109,6 +120,8 @@ public class GraphManager {
 		  return output;
 		
 	}
+
+
 	
 	// INTERSECTIONS BETWEEN COMPONENTS AND THE LIST N
 	public void componentsIntersection(GraphFrame graph,SparkSession spark,String CheckPath,List<String> N,int degree) throws IOException {
@@ -210,8 +223,27 @@ public class GraphManager {
 		 componentsIntersection(graph,spark,CheckPath,N,-1);
 	}
 
-	public GraphFrame F1(GraphFrame graph, ArrayList<Object> N, int x){
-		if(x > 0){
+	//F4
+	public GraphFrame filterByNeighbors(GraphFrame graph, ArrayList<Object> N, int x,boolean b){
+		if(b){
+			Dataset<Row> paths=graph.shortestPaths().landmarks(N).run();
+			Dataset<Row> explodedPaths=paths
+					.select(paths.col("id"),org.apache.spark.sql.functions.explode(paths.col("distances")))
+					.filter("value<="+x)
+					.drop("value")
+					.groupBy("id")
+					.agg(org.apache.spark.sql.functions.collect_list("key").as("key"));
+			Dataset<Row> edges=graph.edges()
+					.join(explodedPaths,graph.edges().col("src").equalTo(explodedPaths.col("id")));
+			edges=edges
+					.withColumnRenamed("id", "id1")
+					.withColumnRenamed("key","x_src");
+			edges=edges.join(explodedPaths,edges.col("dst").equalTo(explodedPaths.col("id")));
+			edges=edges.withColumnRenamed("key", "x_dst").drop("id").drop("id1");
+			graph=GraphFrame.fromEdges(edges);
+			return graph;
+		}
+		else{
 			Dataset<Row> paths=graph.shortestPaths().landmarks(N).run();
 			Dataset<Row> explodedPaths=paths
 					.select(paths.col("id"),org.apache.spark.sql.functions.explode(paths.col("distances")))
@@ -224,9 +256,17 @@ public class GraphManager {
 			edges=edges.join(explodedPaths,edges.col("dst").equalTo(explodedPaths.col("id")));
 			edges=edges.withColumnRenamed("id", "id2");
 			graph=GraphFrame.fromEdges(edges);
+			return graph;
+		}
+
+	}
+	//F1
+	public GraphFrame filterComponents(GraphFrame graph, ArrayList<Object> N, int x){
+		if(x > 0){
+			graph=filterByNeighbors(graph,N,x,false);
+
 		}
 		spark.sparkContext().setCheckpointDir(CheckPath);
-
 		Dataset<Row> components=graph.connectedComponents().run();
 
 		Tuple2<Long, Integer> max=components.javaRDD()
@@ -234,33 +274,21 @@ public class GraphManager {
 				.mapToPair(new Ncounter2(N))
 				.reduceByKey((i1,i2)->{return i1+i2;})
 				.max(new comparator());
-
 		Dataset<Row> maxComponent=components.filter("component="+max._1);
 		Dataset<Row> filteredEdges=graph.edges().join(maxComponent,graph.edges().col("src").equalTo(maxComponent.col("id")));
 		GraphFrame output=GraphFrame.fromEdges(filteredEdges);
-
 		return output;
 	}
 
-	public GraphFrame F1(GraphFrame graph, ArrayList<Object> N){
-		return F1(graph, N,0);
+	public GraphFrame filterComponents(GraphFrame graph, ArrayList<Object> N){
+		return filterComponents(graph, N,0);
 	}
 
-	public void F2(GraphFrame graph,ArrayList<Object> N,int x) throws IOException {
+	//F2
+	public void componentsIntersection(GraphFrame graph,ArrayList<Object> N,int x) throws IOException {
 
 		if(x>0) {
-			Dataset<Row> paths=graph.shortestPaths().landmarks(N).run();
-			Dataset<Row> explodedPaths=paths
-					.select(paths.col("id"),org.apache.spark.sql.functions.explode(paths.col("distances")))
-					.filter("value<="+x)
-					.drop("key")
-					.drop("value")
-					.distinct();
-			Dataset<Row> edges=graph.edges().join(explodedPaths,graph.edges().col("src").equalTo(explodedPaths.col("id")));
-			edges=edges.withColumnRenamed("id", "id1");
-			edges=edges.join(explodedPaths,edges.col("dst").equalTo(explodedPaths.col("id")));
-			edges=edges.withColumnRenamed("id", "id2");
-			graph=GraphFrame.fromEdges(edges);
+			graph=filterByNeighbors(graph,N,x,false);
 		}
 
 		spark.sparkContext().setCheckpointDir(CheckPath);
@@ -283,11 +311,12 @@ public class GraphManager {
 		out.close();
 	}
 
-	public void F2(GraphFrame graph, ArrayList<Object> N) throws IOException {
-		F2(graph, N,0);
+	public void componentsIntersection(GraphFrame graph, ArrayList<Object> N) throws IOException {
+		componentsIntersection(graph, N,0);
 	}
 
-	public Dataset<Row> F3(GraphFrame graph,String id, int x){
+	//F3
+	public Dataset<Row> xNeighbors(GraphFrame graph,String id, int x){
 		ArrayList<Object> landmarks=new ArrayList<Object>();
 		landmarks.add(id);
 		Dataset<Row> shortestPaths=graph.shortestPaths().landmarks(landmarks).run();
@@ -299,24 +328,5 @@ public class GraphManager {
 		return output;
 	}
 
-	public GraphFrame F4(GraphFrame graph,ArrayList<Object> N, int x){
-		Dataset<Row> paths=graph.shortestPaths().landmarks(N).run();
-		Dataset<Row> explodedPaths=paths
-				.select(paths.col("id"),org.apache.spark.sql.functions.explode(paths.col("distances")))
-				.filter("value<="+x)
-				.drop("value")
-				.groupBy("id")
-				.agg(org.apache.spark.sql.functions.collect_list("key").as("key"));
-		Dataset<Row> edges=graph.edges()
-				.join(explodedPaths,graph.edges().col("src").equalTo(explodedPaths.col("id")));
-		edges=edges
-				.withColumnRenamed("id", "id1")
-				.withColumnRenamed("key","x_src");
-		edges=edges.join(explodedPaths,edges.col("dst").equalTo(explodedPaths.col("id")));
-		edges=edges.withColumnRenamed("key", "x_dst").drop("id").drop("id1");
-		graph=GraphFrame.fromEdges(edges);
-		return graph;
-	}
-
-
+	
 }
