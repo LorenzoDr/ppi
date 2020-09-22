@@ -20,6 +20,7 @@ public class Main {
 
         String path = local ? "data/human_small.tsv" : args[0];
 
+
         SparkSession spark;
 
         if (local)
@@ -67,6 +68,11 @@ public class Main {
 
         for (Map.Entry<Dataset<Row>, Integer> el : F2(graph, N).entrySet())
             System.out.println("Cardinality of the connected component and relative number of N nodes: " + el.getKey().count() + " = " + el.getValue());
+
+        System.out.println("If x=2, the number of vertices in the x-neighbor of"+N.get(1).toString()+"is:"+xNeighbors(graph,N.get(1).toString(),2));
+
+        GraphFrame g=filterByNeighbors(graph,N,2);
+        System.out.println("Number of vertices in the subgraph of N and its x-neighbors"+g.vertices().count());
     }
 
     public static Dataset<Row> F1(GraphFrame graph, ArrayList<Object> N, int x) {
@@ -136,6 +142,18 @@ public class Main {
         return component_count;
     }
 
+    //F3
+    public static Dataset<Row> xNeighbors(GraphFrame graph,String id, int x){
+        ArrayList<Object> landmarks=new ArrayList<Object>();
+        landmarks.add(id);
+        Dataset<Row> shortestPaths=graph.shortestPaths().landmarks(landmarks).run();
+        Dataset<Row> output=shortestPaths
+                .select(shortestPaths.col("id"),org.apache.spark.sql.functions.explode(shortestPaths.col("distances")))
+                .filter("value<="+x)
+                .drop("key")
+                .drop("value");
+        return output;
+    }
     private static class Ncounter implements PairFunction<Tuple2<Object,Object>, Long, Integer> {
         private final ArrayList<Object> N;
 
@@ -149,6 +167,25 @@ public class Main {
         }
     }
 
+    //F4
+    public static GraphFrame filterByNeighbors(GraphFrame graph, ArrayList<Object> N, int x){
+            Dataset<Row> paths=graph.shortestPaths().landmarks(N).run();
+            Dataset<Row> explodedPaths=paths
+                    .select(paths.col("id"),org.apache.spark.sql.functions.explode(paths.col("distances")))
+                    .filter("value<="+x)
+                    .drop("value")
+                    .groupBy("id")
+                    .agg(org.apache.spark.sql.functions.collect_list("key").as("key"));
+            Dataset<Row> edges=graph.edges()
+                    .join(explodedPaths,graph.edges().col("src").equalTo(explodedPaths.col("id")));
+            edges=edges
+                    .withColumnRenamed("id", "id1")
+                    .withColumnRenamed("key","x_src");
+            edges=edges.join(explodedPaths,edges.col("dst").equalTo(explodedPaths.col("id")));
+            edges=edges.withColumnRenamed("key", "x_dst").drop("id").drop("id1");
+            graph=GraphFrame.fromEdges(edges);
+            return graph;
+    }
     private static class NCountComparator implements Comparator<Tuple2<Long,Integer>>, Serializable {
 
         @Override
