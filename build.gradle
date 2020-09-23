@@ -13,6 +13,17 @@ repositories {
     }
 }
 
+sourceSets {
+    main {
+        scala {
+            srcDirs = ['src/main/scala', 'src/main/java']
+        }
+        java {
+            srcDirs = []
+        }
+    }
+}
+
 shadowJar.zip64 = true
 
 jar {
