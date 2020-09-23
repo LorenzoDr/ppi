@@ -9,18 +9,13 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
-import org.apache.spark.sql.types.StructType;
 import org.graphframes.GraphFrame;
 
 import org.neo4j.spark.Neo4j;
-import scala.Function2;
+import ppiscala.graphUtil;
 import scala.Predef;
 import scala.Tuple2;
 import scala.collection.JavaConverters;
@@ -421,6 +416,24 @@ public class PPInetwork {
 				.drop("key")
 				.drop("value");
 		return output;
+	}
+
+	public Dataset<Row> F5(String inputNode, int x){
+
+		Dataset<Row> edges=graph.edges().withColumn("weight", org.apache.spark.sql.functions.lit(-1));
+		GraphFrame graph1=GraphFrame.fromEdges(edges);
+		Dataset<Row> weightedPath= graphUtil.maxWeightedPaths(graph1,inputNode,spark);
+		return weightedPath.filter("weight>="+x+" OR weight==0");
+	}
+
+	public GraphFrame F6(String inputNode, int x){
+		Dataset<Row> xNeighbors=F5(inputNode,x);
+		Dataset<Row> edges=graph.edges();
+		edges=edges.join(xNeighbors,edges.col("src").equalTo(xNeighbors.col("id")));
+		edges=edges.drop("id").drop("weight");
+		edges=edges.join(xNeighbors,edges.col("dst").equalTo(xNeighbors.col("id")));
+		edges.show();
+		return GraphFrame.fromEdges(edges);
 	}
 
 
