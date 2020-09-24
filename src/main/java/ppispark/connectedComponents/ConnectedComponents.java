@@ -47,13 +47,19 @@ public class ConnectedComponents {
 		}
 
 
-
+		PPInetwork ppi=new PPInetwork(spark,"data/ridotto.tsv");
+		ArrayList<Object> landmarks=new ArrayList<Object>();
+		landmarks.add("uniprotkb:P51581");
+		landmarks.add("uniprotkb:P51584");
+		ppi.F7(landmarks,3);
 
 
 
 
 
 	}
+
+
 
 	
 

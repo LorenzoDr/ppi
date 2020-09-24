@@ -21,6 +21,8 @@ import scala.Tuple2;
 import scala.collection.JavaConverters;
 import scala.reflect.ClassTag;
 
+import javax.xml.crypto.Data;
+
 public class PPInetwork {
 	public SparkSession spark;
 	public String inputPath;
@@ -432,8 +434,23 @@ public class PPInetwork {
 		edges=edges.join(xNeighbors,edges.col("src").equalTo(xNeighbors.col("id")));
 		edges=edges.drop("id").drop("weight");
 		edges=edges.join(xNeighbors,edges.col("dst").equalTo(xNeighbors.col("id")));
-		edges.show();
 		return GraphFrame.fromEdges(edges);
+	}
+
+	public void F7(ArrayList<Object> input, int x){
+		Dataset<Row> edges=graph.edges().withColumn("weight", org.apache.spark.sql.functions.lit(-1));
+		GraphFrame graph1=GraphFrame.fromEdges(edges);
+		Dataset<Row> xNeighbors=graphUtil.maxWeightedPaths(graph1,input,spark);
+		Dataset<Row> vertices=xNeighbors.filter("weight>="+x+" OR weight==0")
+				.groupBy("id")
+				.agg(org.apache.spark.sql.functions.collect_list("key").as("key"));
+		edges=graph1.edges();
+		edges=edges.join(vertices,edges.col("src").equalTo(vertices.col("id")));
+		edges=edges.drop("id").drop("key");
+		edges=edges.join(vertices,edges.col("dst").equalTo(vertices.col("id")));
+		GraphFrame output=graphUtil.toGraphFrame(spark,vertices,edges);
+		output.edges().show();
+		output.vertices().show();
 	}
 
 
