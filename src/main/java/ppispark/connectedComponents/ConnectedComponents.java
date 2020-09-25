@@ -48,10 +48,19 @@ public class ConnectedComponents {
 
 
 		PPInetwork ppi=new PPInetwork(spark,"data/ridotto.tsv");
-		ArrayList<Object> landmarks=new ArrayList<Object>();
-		landmarks.add("uniprotkb:P51581");
-		landmarks.add("uniprotkb:P51584");
-		ppi.F7(landmarks,3);
+		ArrayList<ArrayList<Object>> landmarks=new ArrayList<ArrayList<Object> >(10);
+		ArrayList<Object> landmark1=new ArrayList<Object>();
+		ArrayList<Object> landmark2=new ArrayList<Object>();
+
+		landmark1.add("uniprotkb:P51581");
+		landmark2.add("uniprotkb:P51584");
+
+		landmarks.add(landmark1);
+		landmarks.add(landmark2);
+
+		GraphFrame g=ppi.F8(landmarks,3);
+		g.vertices().show();
+		g.edges().show();
 
 
 

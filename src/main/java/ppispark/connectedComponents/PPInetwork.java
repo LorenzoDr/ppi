@@ -10,8 +10,13 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.Metadata;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
 import org.graphframes.GraphFrame;
 
 import org.neo4j.spark.Neo4j;
@@ -20,6 +25,7 @@ import scala.Predef;
 import scala.Tuple2;
 import scala.collection.JavaConverters;
 import scala.reflect.ClassTag;
+import sun.jvm.hotspot.classfile.ClassLoaderDataGraph;
 
 import javax.xml.crypto.Data;
 
@@ -437,7 +443,7 @@ public class PPInetwork {
 		return GraphFrame.fromEdges(edges);
 	}
 
-	public void F7(ArrayList<Object> input, int x){
+	public GraphFrame F7(ArrayList<Object> input, int x){
 		Dataset<Row> edges=graph.edges().withColumn("weight", org.apache.spark.sql.functions.lit(-1));
 		GraphFrame graph1=GraphFrame.fromEdges(edges);
 		Dataset<Row> xNeighbors=graphUtil.maxWeightedPaths(graph1,input,spark);
@@ -449,10 +455,35 @@ public class PPInetwork {
 		edges=edges.drop("id").drop("key");
 		edges=edges.join(vertices,edges.col("dst").equalTo(vertices.col("id")));
 		GraphFrame output=graphUtil.toGraphFrame(spark,vertices,edges);
-		output.edges().show();
-		output.vertices().show();
+		return output;
+
 	}
 
+	public GraphFrame F8(ArrayList<ArrayList<Object>> provaInput, int x){
+		Dataset<Row> edges=graph.edges().withColumn("weight", org.apache.spark.sql.functions.lit(-1));
+		GraphFrame graph1=GraphFrame.fromEdges(edges);
+		StructType s = new StructType()
+				.add(new StructField("id", DataTypes.StringType, true, Metadata.empty()))
+				.add(new StructField("key", DataTypes.StringType, true, Metadata.empty()))
+				.add(new StructField("weight", DataTypes.DoubleType, true, Metadata.empty()));
+
+		Dataset<Row> xNeighbors = spark.read().schema(s).csv(spark.emptyDataset(Encoders.STRING()));
+
+		for(int i=0;i< provaInput.size();i++){
+			Dataset<Row> tmp=graphUtil.maxWeightedPaths(graph1, provaInput.get(i),i,spark);
+			xNeighbors=xNeighbors.union(tmp);
+		}
+		Dataset<Row> vertices=xNeighbors.filter("weight>="+x+" OR weight==0")
+				.groupBy("id")
+				.agg(org.apache.spark.sql.functions.collect_list("key").as("key"));
+		edges=graph1.edges();
+		edges=edges.join(vertices,edges.col("src").equalTo(vertices.col("id")));
+		edges=edges.drop("id").drop("key");
+		edges=edges.join(vertices,edges.col("dst").equalTo(vertices.col("id")));
+		GraphFrame output=graphUtil.toGraphFrame(spark,vertices,edges);
+		return output;
+
+	}
 
 
 
