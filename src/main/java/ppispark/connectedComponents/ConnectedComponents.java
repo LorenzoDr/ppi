@@ -53,14 +53,14 @@ public class ConnectedComponents {
 		ArrayList<Object> landmark2=new ArrayList<Object>();
 
 		landmark1.add("uniprotkb:P51581");
+		landmark2.add("uniprotkb:P51581");
 		landmark2.add("uniprotkb:P51584");
 
 		landmarks.add(landmark1);
 		landmarks.add(landmark2);
 
-		GraphFrame g=ppi.F8(landmarks,3);
-		g.vertices().show();
-		g.edges().show();
+		ppi.toNeo4j();
+
 
 
 

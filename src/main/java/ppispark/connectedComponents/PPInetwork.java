@@ -2,21 +2,21 @@ package ppispark.connectedComponents;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.spark.SparkConf;
+import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Encoders;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.Metadata;
-import org.apache.spark.sql.types.StructField;
-import org.apache.spark.sql.types.StructType;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.rdd.RDD;
+import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.*;
 import org.graphframes.GraphFrame;
 
 import org.neo4j.spark.Neo4j;
@@ -68,9 +68,6 @@ public class PPInetwork {
     }
 
 	
-	//EXPORT GRAPH TO TSV TEXT FILE
-	public void toTsv() {}
-	
 	//LOAD GRAPH FROM NEO4J
 	public GraphFrame fromNeo4j(String[] edgesLabels) {
 		Neo4j conn = new Neo4j(spark.sparkContext());
@@ -83,20 +80,16 @@ public class PPInetwork {
 		GraphFrame graph = GraphFrame.fromEdges(d);
 		return graph;
 	}
-	
-	//EXPORT GRAPH TO NEO4J
-	public void toNeo4j(GraphFrame graph,SparkSession spark) {
-		ClassTag<Row> row_tag = scala.reflect.ClassTag$.MODULE$.apply(Row.class);
-		Neo4j conn = new Neo4j(spark.sparkContext());
 
-		// todo: to check, before: conn.saveGraph(graph.toGraphX(), conn.saveGraph$default$2(), conn.saveGraph$default$3(), true, row_tag, row_tag);
-		conn.saveGraph(graph.toGraphX(), "PPINetwork", null, true, row_tag, row_tag);
-	}
 
 	public Dataset<Row> vertices(){
 		Dataset<Row> v=graph.vertices();
 		System.out.println("Number of vertices: "+v.count());
 		return v;
+	}
+
+	public long verticesCounter(){
+		return graph.vertices().count();
 	}
 
 	public Dataset<Row> vertices(GraphFrame g){
@@ -121,6 +114,16 @@ public class PPInetwork {
 		Dataset<Row> e=graph.edges();
 		System.out.println("Number of edges: "+e.count());
 		return e;
+	}
+
+	public long edgesCounter(){
+		return graph.edges().count();
+	}
+
+	public long density(){
+		long nVertices=graph.vertices().count();
+		long nEdges=graph.edges().count();
+		return (2*nEdges)/(nVertices*(nVertices-1));
 	}
 
 	public Dataset<Row> edges(GraphFrame g){
@@ -154,7 +157,7 @@ public class PPInetwork {
 	public Dataset<Row> degrees(GraphFrame g,String condition){
 		return g.degrees().filter(condition);
 	}
-	public Dataset<Row> triangle(){
+	public Dataset<Row> trianglesCounter(){
 		return graph.triangleCount().run();
 	}
 
@@ -243,11 +246,11 @@ public class PPInetwork {
 		          //.mapToPair(t->new Tuple2<>(t._2,t._1._2));
 		  
 		 FileSystem fs = FileSystem.get(spark.sparkContext().hadoopConfiguration());
-	         FSDataOutputStream out = fs.create(new Path("output.csv"));
-	         out.writeBytes("Component-ID,N"+ "\n");
+		 FSDataOutputStream out = fs.create(new Path("output.csv"));
+		 out.writeBytes("Component-ID,N"+ "\n");
 		 for(Tuple2<Long,Integer> t:intersections.collect()) {
 			  out.writeBytes(t._1+","+t._2+ "\n");
-		  }
+		 }
 		 out.close();
 		 	
 	}
@@ -460,6 +463,8 @@ public class PPInetwork {
 	}
 
 	public GraphFrame F8(ArrayList<ArrayList<Object>> provaInput, int x){
+		List<String> data = Arrays.asList("A","B","C","D","E");
+		SparkContext sparkContext=new SparkContext();
 		Dataset<Row> edges=graph.edges().withColumn("weight", org.apache.spark.sql.functions.lit(-1));
 		GraphFrame graph1=GraphFrame.fromEdges(edges);
 		StructType s = new StructType()
@@ -483,6 +488,38 @@ public class PPInetwork {
 		GraphFrame output=graphUtil.toGraphFrame(spark,vertices,edges);
 		return output;
 
+	}
+
+	public GraphFrame F9(ArrayList<ArrayList<Object>> input, int x){
+
+		JavaSparkContext jsc=new JavaSparkContext(spark.sparkContext());
+		JavaRDD<Row> N=jsc.emptyRDD();
+
+
+		for(int i=0;i<input.size();i++){
+			int y=i+1;
+			JavaRDD<Row> tmp=jsc.parallelize(input.get(i)).map(t->{
+				Object[] o=new Object[]{t, y};
+				Row r=RowFactory.create(o);
+				return r;
+			});
+			N=N.union(tmp);
+		}
+
+		StructType s = new StructType()
+				.add(new StructField("id1", DataTypes.StringType, true, Metadata.empty()))
+				.add(new StructField("N", DataTypes.IntegerType, true, Metadata.empty()));
+
+		Dataset<Row> prova=spark.createDataFrame(N, s).groupBy("id1")
+				.agg(org.apache.spark.sql.functions.collect_list("N").as("N"));;
+		prova.show();
+
+		GraphFrame g=F7(input.get(0),x);
+		Dataset<Row> vertices=g.vertices();
+		vertices=vertices.join(prova,vertices.col("id")
+				.equalTo(prova.col("id1")),"left")
+				.drop("id1");
+		return graphUtil.toGraphFrame(spark,vertices,g.edges());
 	}
 
 

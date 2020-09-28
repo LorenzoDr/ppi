@@ -6,8 +6,24 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import java.util
+import org.neo4j.spark._
+
 
 object graphUtil {
+  def toNeo4J(spark: SparkSession, graph:GraphFrame)= {
+    val neo=Neo4j(spark.sparkContext)
+    neo.saveGraph(graph.toGraphX)
+  }
+
+
+  def toGraphFrame(sparkSession: SparkSession, dataset: Dataset[Row], dataset1: Dataset[Row]): GraphFrame = {
+    val g = GraphFrame(dataset, dataset1)
+    return g
+  }
+
+
+
+
   def dfSchema(columnNames: List[String]): StructType =
     StructType(
       Seq(
@@ -92,11 +108,7 @@ object graphUtil {
     return output
   }
 
-  def toGraphFrame(sparkSession: SparkSession, dataset: Dataset[Row], dataset1: Dataset[Row]): GraphFrame = {
-    //dataset.toDF().show()
-    val g = GraphFrame(dataset, dataset1)
-    return g
-  }
+
 
   def maxWeightedPaths(g: GraphFrame, landmarks: util.ArrayList[Any],i:Int, spark: SparkSession): Dataset[Row] = {
     val graph = g.toGraphX
