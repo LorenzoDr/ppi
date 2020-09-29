@@ -1,5 +1,6 @@
 package ppispark.connectedComponents;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +17,7 @@ import org.graphframes.GraphFrame;
 import scala.Tuple2;
 
 public class ConnectedComponents {
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 
 		////////////////////Initialize Spark///////////////////////////
 		Logger.getLogger("org").setLevel(Level.WARN);
@@ -53,13 +54,21 @@ public class ConnectedComponents {
 		ArrayList<Object> landmark2=new ArrayList<Object>();
 
 		landmark1.add("uniprotkb:P51581");
-		landmark2.add("uniprotkb:P51581");
-		landmark2.add("uniprotkb:P51584");
+		landmark1.add("uniprotkb:P51586");
+		landmark1.add("uniprotkb:P51518");
+		landmark1.add("uniprotkb:P51516");
+		landmark1.add("uniprotkb:P51514");
 
-		landmarks.add(landmark1);
-		landmarks.add(landmark2);
+		Dataset<Row> g=ppi.xNeighbors("uniprotkb:P51586",2);
+		g.show();
 
-		ppi.toNeo4j();
+
+
+
+
+
+
+
 
 
 

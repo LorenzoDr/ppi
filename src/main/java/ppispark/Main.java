@@ -8,6 +8,7 @@ import org.apache.spark.sql.*;
 import org.graphframes.GraphFrame;
 import scala.Tuple2;
 
+
 import java.io.Serializable;
 import java.util.*;
 
@@ -19,16 +20,18 @@ public class Main {
         boolean local = false;
 
         String path = local ? "data/human_small.tsv" : args[0];
-
+        //String path = local ? "data/ridotto.tsv" : args[0];
 
         SparkSession spark;
 
-        if (local)
+        if (local){
+            //System.setProperty("spark.sql.legacy.allowUntypedScalaUDF", "true");
             spark = SparkSession
                     .builder()
                     .master("local[*]")
                     .appName("biograph")
                     .getOrCreate();
+            }
         else
             spark = SparkSession
                     .builder()
@@ -61,18 +64,19 @@ public class Main {
 
         ArrayList<Object> N = new ArrayList<>();
 
-        for (Row row : rows)
+
+       for (Row row : rows)
             N.add(row.getString(0));
 
-        System.out.println("Number of vertices of the connected component maximizing nodes in N: " + F1(graph, N, 4).count());
+        System.out.println("Number of vertices of the connected component maximizing nodes in N: " + F1(graph, N, 2).count());
 
         for (Map.Entry<Dataset<Row>, Integer> el : F2(graph, N).entrySet())
             System.out.println("Cardinality of the connected component and relative number of N nodes: " + el.getKey().count() + " = " + el.getValue());
 
-        System.out.println("If x=2, the number of vertices in the x-neighbor of"+N.get(1).toString()+"is:"+xNeighbors(graph,N.get(1).toString(),2));
+        System.out.println("If x=2, the number of vertices in the x-neighbor of "+N.get(1).toString()+" is:"+xNeighbors(graph,N.get(1).toString(),2).count());
 
         GraphFrame g=filterByNeighbors(graph,N,2);
-        System.out.println("Number of vertices in the subgraph of N and its x-neighbors"+g.vertices().count());
+        System.out.println("Number of vertices in the subgraph of N and its x-neighbors: "+g.vertices().count());
     }
 
     public static Dataset<Row> F1(GraphFrame graph, ArrayList<Object> N, int x) {

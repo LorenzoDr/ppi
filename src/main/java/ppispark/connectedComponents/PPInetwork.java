@@ -324,7 +324,7 @@ public class PPInetwork {
 	}
 
 	//F4
-	public GraphFrame filterByNeighbors( ArrayList<Object> N, int x,boolean b){
+	public GraphFrame filterByNeighbors(ArrayList<Object> N, int x,boolean b){
 
 		if(b){
 			Dataset<Row> paths=graph.shortestPaths().landmarks(N).run();
@@ -367,10 +367,8 @@ public class PPInetwork {
 	public GraphFrame filterComponents(ArrayList<Object> N, int x){
 		if(x > 0){
 			graph=filterByNeighbors(N,x,false);
-
 		}
 		Dataset<Row> components=graph.connectedComponents().run();
-
 		Tuple2<Long, Integer> max=components.javaRDD()
 				.mapToPair(r->new Tuple2<>(r.get(1),r.get(0)))
 				.mapToPair(new Ncounter2(N))
@@ -380,6 +378,26 @@ public class PPInetwork {
 		Dataset<Row> filteredEdges=graph.edges().join(maxComponent,graph.edges().col("src").equalTo(maxComponent.col("id")));
 		GraphFrame output=GraphFrame.fromEdges(filteredEdges);
 		return output;
+	}
+
+	public GraphFrame provaF1(ArrayList<Object> N, int x){
+		Dataset<Row> components=graph.connectedComponents().run();
+
+		Tuple2<Long, Integer> max=components.javaRDD()
+				.mapToPair(r->new Tuple2<>(r.get(1),r.get(0)))
+				.mapToPair(new Ncounter2(N))
+				.reduceByKey((i1,i2)->{return i1+i2;})
+				.max(new comparator());
+		Dataset<Row> maxComponent=components.filter("component="+max._1);
+		Dataset<Row> filteredEdges=graph.edges().join(maxComponent,graph.edges().col("src").equalTo(maxComponent.col("id")));
+		filteredEdges=filteredEdges.drop("id").drop("component");
+		filteredEdges=filteredEdges.join(maxComponent,filteredEdges.col("dst").equalTo(maxComponent.col("id")));
+		GraphFrame output=GraphFrame.fromEdges(filteredEdges);
+		if(x > 0){
+			output=filterByNeighbors(N,x,false);
+		}
+		return output;
+
 	}
 
 	public GraphFrame filterComponents(ArrayList<Object> N){
@@ -412,7 +430,7 @@ public class PPInetwork {
 		out.close();
 	}
 
-	public void componentsIntersection(GraphFrame graph, ArrayList<Object> N) throws IOException {
+	public void componentsIntersection(ArrayList<Object> N) throws IOException {
 		componentsIntersection(N,0);
 	}
 
