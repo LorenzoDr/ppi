@@ -331,6 +331,15 @@ public class PPInetwork {
 		return graph.degrees().filter(condition);
 	}
 
+	//Centrality index
+	public Dataset<Row> closeness(ArrayList<Object> landmarks){
+		Dataset<Row> paths=graph.shortestPaths().landmarks(landmarks).run();
+		Dataset<Row> explodedPaths=paths
+				.select(paths.col("id"),org.apache.spark.sql.functions.explode(paths.col("distances")));
+		Dataset<Row> t=explodedPaths.groupBy("key").sum("value");
+		return 	t.withColumn("sum(value)",org.apache.spark.sql.functions.pow(t.col("sum(value)"),-1));
+	}
+
 	public Dataset<Row> degrees(GraphFrame g,String condition){
 		return g.degrees().filter(condition);
 	}
