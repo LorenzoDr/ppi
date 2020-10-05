@@ -1,7 +1,6 @@
-package ppispark.connectedComponents;
+package ppispark.functions;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.spark.api.java.function.PairFunction;
 

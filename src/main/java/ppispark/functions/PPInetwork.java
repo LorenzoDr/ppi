@@ -1,4 +1,4 @@
-package ppispark.connectedComponents;
+package ppispark.functions;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,25 +25,29 @@ import scala.Tuple2;
 import scala.collection.JavaConverters;
 
 public class PPInetwork {
+
 	public SparkSession spark;
 	public String inputPath;
 	public GraphFrame graph;
+
+
 	public PPInetwork(SparkSession spark, String inputPath){
 		this.spark=spark;
 		this.inputPath=inputPath;
-		graph=fromTsv(inputPath);
+		graph=importFromTsv(inputPath);
 		spark.sparkContext().setCheckpointDir("PPI-Check");
 	}
+
 	public PPInetwork(SparkSession spark, String inputPath, String CheckPath){
 		this.spark=spark;
 		this.inputPath=inputPath;
-		graph=fromTsv(inputPath);
+		graph=importFromTsv(inputPath);
 		spark.sparkContext().setCheckpointDir(CheckPath);
 	}
 
 
 	//LOAD GRAPH FROM TSV FILE
-	public GraphFrame fromTsv(String path) {
+	public GraphFrame importFromTsv(String path) {
 			String[] cols_names = new String[] { "src", "dst", "alt_id_A", "alt_id_B", "alias_A", "alias_B", "det_method",
 					"first_auth", "id_pub", "ncbi_id_A", "ncbi_id_B", "int_types", "source_db", "int_id", "conf_score",
 					"comp_exp", "bio_role_A", "bio_role_B", "exp_role_A", "exp_role_B", "type_A", "type_B", "xref_A",
@@ -64,12 +68,11 @@ public class PPInetwork {
 
 	
 	//LOAD GRAPH FROM NEO4J
-	public GraphFrame loadGraphfromNeo4j(String url, String user, String password, String[] nodesLabels, String[] edgesProperties) {
-
-		spark.sparkContext().conf().set("spark.neo4j.encryption.status","false")
-				.set("spark.neo4j.url", "bolt://localhost:7687")
-				.set("spark.neo4j.user", "neo4j")
-				.set("spark.neo4j.password", "Cirociro94");
+	public GraphFrame importGraphFromNeo4j(String url, String user, String password, String[] nodesLabels, String[] edgesProperties) {
+		spark.sparkContext().conf()//.set("spark.neo4j.encryption.status","false")
+				.set("spark.neo4j.url", url)
+				.set("spark.neo4j.user", user)
+				.set("spark.neo4j.password", password);
 
 		StructType schemaVertices=new StructType().add("id","String");
 		StructType schemaEdges=new StructType().add("src","String").add("dst","String");
