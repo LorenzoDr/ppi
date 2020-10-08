@@ -6,7 +6,10 @@ import java.util.ArrayList;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
+import org.apache.spark.graphx.Edge;
 import org.apache.spark.sql.*;
+import org.graphframes.GraphFrame;
+import ppiscala.graphUtil;
 
 public class test {
 	public static void main(String[] args) throws IOException {
@@ -19,11 +22,12 @@ public class test {
 
 		// String path = local ? "data/human_small.tsv" : args[0];
 
-		SparkConf sparkConf = new SparkConf().setAppName("PPI-project").set("spark.neo4j.url", "bolt://localhost:7687")
-				.set("spark.neo4j.user", "neo4j").set("spark.neo4j.password", "Cirociro94");
+		SparkConf sparkConf = new SparkConf().setAppName("PPI-project");
+			//	.set("spark.neo4j.url", "bolt://localhost:7687")
+			//	.set("spark.neo4j.user", "neo4j").set("spark.neo4j.password", "Cirociro94");
 
 		SparkSession spark;
-		String CheckPath;
+
 
 		if (local) {
 			System.setProperty("hadoop.home.dir", "C:\\Users\\loren\\eclipse\\winutils");
@@ -31,41 +35,31 @@ public class test {
 			spark = SparkSession.builder().config(sparkConf).master("local[*]")
 					// .appName("biograph")
 					.getOrCreate();
-			CheckPath = "C://Users/loren/eclipse-worskspace/PPI-Project/data/checkpoints";
 		} else {
 			spark = SparkSession.builder().master("yarn").appName("biograph").config("spark.executor.instances", "8")
 					.config("spark.executor.cores", "6").config("spark.executor.memory", "20g")
 					.config("spark.debug.maxToStringFields", "50").getOrCreate();
-			CheckPath = "hdfs://master.local:8020/user/hduser/data/checkpoint";
 		}
 
 
 		PPInetwork ppi=new PPInetwork(spark,"data/ridotto.tsv");
-		ArrayList<ArrayList<Object>> landmarks=new ArrayList<ArrayList<Object> >(10);
-		ArrayList<Object> landmark1=new ArrayList<Object>();
-		ArrayList<Object> landmark2=new ArrayList<Object>();
 
-		landmark1.add("uniprotkb:P51581");
-		landmark1.add("uniprotkb:P51586");
-		landmark1.add("uniprotkb:P51518");
-		landmark1.add("uniprotkb:P51516");
-		landmark1.add("uniprotkb:P51514");
-
-		Dataset<Row> g=ppi.xNeighbors("uniprotkb:P51586",2);
-		g.show();
-
-
-
-
-
-
-
-
-
-
-
-
-
+		/*String[] nodesProperties=new String[]{"name","type","value"};
+		String[] nodesConditions=new String[]{"type<>'C'","value in range(1,20)"};
+		String[] edgesProperties=new String[]{"weight","type"};
+		String[] edgesConditions=new String[]{"type<>'C'"};
+		GraphFrame g=ppi.filteredEdgesFromNeo4j("bolt://localhost:7687","neo4j","Cirociro94",nodesProperties,edgesProperties,edgesConditions);
+		GraphFrame g=ppi.importGraphFromNeo4j("bolt://localhost:7687","neo4j","Cirociro94",nodesProperties,edgesProperties,nodesConditions,edgesConditions,false);
+*/
+		ArrayList<Object> nodes=new ArrayList<Object>();
+		nodes.add("uniprotkb:P51583");
+		nodes.add("uniprotkb:P51027");
+		nodes.add("uniprotkb:P51028");
+		nodes.add("uniprotkb:P51072");
+		nodes.add("uniprotkb:P51075");
+		nodes.add("uniprotkb:P51076");
+		nodes.add("uniprotkb:P51071");
+		ppi.exportToTsv();
 
 	}
 

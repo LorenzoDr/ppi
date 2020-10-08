@@ -1,25 +1,70 @@
 package ppiscala
 
+import java.io.File
+
 import org.graphframes.GraphFrame
 import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import java.util
+
+import org.apache.spark.graphx.lib.PageRank
 import org.neo4j.spark._
+import org.neo4j.spark.cypher.{NameProp, Pattern}
+
 
 
 object graphUtil {
-  def toNeo4J(spark: SparkSession, graph:GraphFrame)= {
+
+  def saveDfToCsv(df: DataFrame, tsvOutput: String) {
+    val tmpParquetDir = "Posts.tmp.parquet"
+
+    df.repartition(1).write.
+      format("com.databricks.spark.csv").
+      option("header", "true").
+      option("delimiter", "\t").
+      save(tmpParquetDir)
+
+    val dir = new File(tmpParquetDir)
+    val newFileRgex = tmpParquetDir
+    val tmpTsfFile = dir.listFiles.filter(_.toPath.toString.matches(newFileRgex))(0).toString
+    (new File(tmpTsfFile)).renameTo(new File(tsvOutput))
+
+    dir.listFiles.foreach( f => f.delete )
+    dir.delete
+  }
+  def toNeo4J(spark: SparkSession) = {
     val neo=Neo4j(spark.sparkContext)
-    neo.saveGraph(graph.toGraphX)
-  }
+    //val graphQuery = "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN id(n) as source, id(m) as target, type(r) as value SKIP $_skip LIMIT $_limit"
+    //val gra: Graph[Long, String] = neo.rels(graphQuery).partitions(7).batch(200).loadGraph
+
+    //println(gra.vertices.count)
+    //    => 100
+    // print(gra.edges.count)
+    //    => 1000
+
+    // load graph via pattern
+    // note ("Person","id") refers to Person.id and ("Person",null) refers to id(Person) in cypher
+    val graph = neo.pattern(("Person","id"),("KNOWS","since"),("Person","id")).loadGraph[Long,Long]
 
 
-  def toGraphFrame(sparkSession: SparkSession, dataset: Dataset[Row], dataset1: Dataset[Row]): GraphFrame = {
-    val g = GraphFrame(dataset, dataset1)
-    return g
+   //println(graph.vertices.count)
+    //    => 100
+   // println(graph.edges.count)
+    //    => 1000
+    //val graph2 = PageRank.run(graph, 5)
+    //    => graph2: org.apache.spark.graphx.Graph[Double,Double] =
+
+    //    => res46: Array[(org.apache.spark.graphx.VertexId, Long)]
+    //    => Array((236746,100), (236745,99), (236744,98))
+
+    // uses pattern from above to save the data, merge parameter is false by default, only update existing nodes
+    //neo.saveGraph(graph, "rank")
+    // uses pattern from parameter to save the data, merge = true also create new nodes and relationships
+    neo.saveGraph(graph, "rank",Pattern(NameProp("Person","id"),Seq[NameProp](NameProp("FRIEND","years")),NameProp("Person","id")), merge = true)
   }
+
 
 
 
