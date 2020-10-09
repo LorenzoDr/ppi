@@ -112,6 +112,7 @@ public class Main {
 
         for(Row r:graph.edges().toJavaRDD().collect()){
             cql="MATCH (a),(b) WHERE a.name='"+r.getString(0)+"' AND b.name='"+r.getString(1)+"' CREATE (a)-[r:"+reltype+"]->(b)";
+            s.run(cql);
         }
         s.close();
     }
