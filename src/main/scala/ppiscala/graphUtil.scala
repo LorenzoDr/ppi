@@ -18,55 +18,31 @@ import org.neo4j.spark.cypher.{NameProp, Pattern}
 object graphUtil {
 
   def saveDfToCsv(df: DataFrame, tsvOutput: String) {
-    val tmpParquetDir = "Posts.tmp.parquet"
+     // format("com.databricks.spark.csv").
+    df
+      .coalesce(1)
+      .write
+      .mode ("overwrite")
+      .format("com.databricks.spark.csv")
+      .option("header", "true")
+      .option("delimiter", "\t")
+      .save("filename.csv")
 
-    df.repartition(1).write.
-      format("com.databricks.spark.csv").
-      option("header", "true").
-      option("delimiter", "\t").
-      save(tmpParquetDir)
-
-    val dir = new File(tmpParquetDir)
-    val newFileRgex = tmpParquetDir
-    val tmpTsfFile = dir.listFiles.filter(_.toPath.toString.matches(newFileRgex))(0).toString
-    (new File(tmpTsfFile)).renameTo(new File(tsvOutput))
-
-    dir.listFiles.foreach( f => f.delete )
-    dir.delete
-  }
-  def toNeo4J(spark: SparkSession) = {
-    val neo=Neo4j(spark.sparkContext)
-    //val graphQuery = "MATCH (n:Person)-[r:KNOWS]->(m:Person) RETURN id(n) as source, id(m) as target, type(r) as value SKIP $_skip LIMIT $_limit"
-    //val gra: Graph[Long, String] = neo.rels(graphQuery).partitions(7).batch(200).loadGraph
-
-    //println(gra.vertices.count)
-    //    => 100
-    // print(gra.edges.count)
-    //    => 1000
-
-    // load graph via pattern
-    // note ("Person","id") refers to Person.id and ("Person",null) refers to id(Person) in cypher
-    val graph = neo.pattern(("Person","id"),("KNOWS","since"),("Person","id")).loadGraph[Long,Long]
-
-
-   //println(graph.vertices.count)
-    //    => 100
-   // println(graph.edges.count)
-    //    => 1000
-    //val graph2 = PageRank.run(graph, 5)
-    //    => graph2: org.apache.spark.graphx.Graph[Double,Double] =
-
-    //    => res46: Array[(org.apache.spark.graphx.VertexId, Long)]
-    //    => Array((236746,100), (236745,99), (236744,98))
-
-    // uses pattern from above to save the data, merge parameter is false by default, only update existing nodes
-    //neo.saveGraph(graph, "rank")
-    // uses pattern from parameter to save the data, merge = true also create new nodes and relationships
-    neo.saveGraph(graph, "rank",Pattern(NameProp("Person","id"),Seq[NameProp](NameProp("FRIEND","years")),NameProp("Person","id")), merge = true)
   }
 
 
+ /* def toNeo4J(spark: SparkSession) = {
+    val g = Neo4jGraph.loadGraph(spark.sparkContext, label1="protein", relTypes=Seq("RELTYPE"),  label2="protein")
 
+    spark.sparkContext.getConf.getAll.foreach(println)
+    g.vertices.take(3).foreach(println)
+    println(g.vertices.count())
+    println(g.edges.count())
+    val g2 = PageRank.run(g, numIter = 5)
+    g2.vertices.take(2).foreach(println)
+    Neo4jGraph.saveGraph(spark.sparkContext, g2, nodeProp = "rank", null, merge = false)
+
+  }*/
 
 
   def dfSchema(columnNames: List[String]): StructType =

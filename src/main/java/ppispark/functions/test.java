@@ -59,7 +59,9 @@ public class test {
 		nodes.add("uniprotkb:P51075");
 		nodes.add("uniprotkb:P51076");
 		nodes.add("uniprotkb:P51071");
-		ppi.exportToTsv();
+
+		ppi.loadSubgraphToNeo4j("bolt://localhost:7687","ciro","Cirociro94","rel");
+
 
 	}
 

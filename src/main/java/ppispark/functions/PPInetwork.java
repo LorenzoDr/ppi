@@ -1,5 +1,6 @@
 package ppispark.functions;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,6 +19,10 @@ import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.*;
 import org.graphframes.GraphFrame;
 
+import org.neo4j.driver.AuthTokens;
+import org.neo4j.driver.Driver;
+import org.neo4j.driver.GraphDatabase;
+import org.neo4j.driver.Session;
 import org.neo4j.spark.Neo4j;
 import ppiscala.graphUtil;
 import scala.Predef;
@@ -66,10 +71,23 @@ public class PPInetwork {
 	        return graph;
     }
 
-	public void exportToTsv() {
-//		graph.edges().coalesce(1).write().format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").csv("output.csv");
-	graphUtil.saveDfToCsv(graph.edges(),"prova");
+	public void exportToTsv(String directoryName) {
+		spark.sparkContext().hadoopConfiguration().set("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false");
+		spark.sparkContext().hadoopConfiguration().set("parquet.enable.summary-metadata", "false");
 
+		graph.edges().coalesce(1).write().format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").csv(directoryName);
+		File f = new File(directoryName);
+
+		for(String s:f.list()){
+			if(s.endsWith("crc")){
+				File file=new File("output/"+s);
+				file.delete();
+			}else{
+				File file=new File("output/"+s);
+				File file1=new File("output/graph");
+				file.renameTo(file1);
+			}
+		}
 	}
 	
 	//LOAD GRAPH FROM NEO4J
@@ -114,9 +132,9 @@ public class PPInetwork {
 	public GraphFrame filteredNodesFromNeo4j(String url, String user, String password, String[] nodesProperties, String[] edgesProperties,String[] conditions) {
 
 		spark.sparkContext().conf().set("spark.neo4j.encryption.status","false")
-				.set("spark.neo4j.url", "bolt://localhost:7687")
-				.set("spark.neo4j.user", "neo4j")
-				.set("spark.neo4j.password", "Cirociro94");
+				.set("spark.neo4j.url", url)
+				.set("spark.neo4j.user", user)
+				.set("spark.neo4j.password", password);
 
 		StructType schemaVertices=new StructType().add("id","String");
 		StructType schemaEdges=new StructType().add("src","String").add("dst","String");
@@ -160,9 +178,9 @@ public class PPInetwork {
 	public GraphFrame filteredEdgesFromNeo4j(String url, String user, String password, String[] nodesProperties, String[] edgesProperties,String[] conditions,boolean dropVertices) {
 
 		spark.sparkContext().conf().set("spark.neo4j.encryption.status","false")
-				.set("spark.neo4j.url", "bolt://localhost:7687")
-				.set("spark.neo4j.user", "neo4j")
-				.set("spark.neo4j.password", "Cirociro94");
+				.set("spark.neo4j.url", url)
+				.set("spark.neo4j.user", user)
+				.set("spark.neo4j.password", password);
 
 		StructType schemaVertices=new StructType().add("id","String");
 		StructType schemaEdges=new StructType().add("src","String").add("dst","String");
@@ -213,9 +231,9 @@ public class PPInetwork {
 	public GraphFrame importGraphFromNeo4j(String url, String user, String password, String[] nodesProperties, String[] edgesProperties,String[] nodesConditions,String[] edgesConditions,boolean dropVertices) {
 
 		spark.sparkContext().conf().set("spark.neo4j.encryption.status","false")
-				.set("spark.neo4j.url", "bolt://localhost:7687")
-				.set("spark.neo4j.user", "neo4j")
-				.set("spark.neo4j.password", "Cirociro94");
+				.set("spark.neo4j.url", url)//"bolt://localhost:7687"
+				.set("spark.neo4j.user", user)//"neo4j"
+				.set("spark.neo4j.password",password );//"Cirociro94"
 
 		StructType schemaVertices=new StructType().add("id","String");
 		StructType schemaEdges=new StructType().add("src","String").add("dst","String");
@@ -267,8 +285,26 @@ public class PPInetwork {
 		return importGraphFromNeo4j(url,user,password,nodesLabels,edgesProperties,nodesCondition,edgesCondition,true);
 	}
 
-	// EXPLORATORY FUNCTIONS
+	//public void toNeo4j(String url, String user, String password){
+	//	spark.sparkContext().conf()
+	//			.set("spark.neo4j.url", "bolt://localhost:7687")
+	//			.set("spark.neo4j.user", "neo4j")
+	//			.set("spark.neo4j.password", "Cirociro94");
+	//	graphUtil.toNeo4J(spark);
 
+	//}
+	public void loadSubgraphToNeo4j(String url, String user, String password,String reltype){
+		Driver driver = GraphDatabase.driver(url, AuthTokens.basic(user, password));
+		Session s =driver.session();
+		String cql;
+
+		for(Row r:graph.edges().toJavaRDD().collect()){
+			cql="MATCH (a),(b) WHERE a.name='"+r.getString(0)+"' AND b.name='"+r.getString(1)+"' CREATE (a)-[r:"+reltype+"]->(b)";
+		}
+		s.close();
+	}
+
+	// EXPLORATORY FUNCTIONS
 	public Dataset<Row> vertices(){
 		return graph.vertices();
 	}
@@ -516,7 +552,7 @@ public class PPInetwork {
 	}
 
 	//F9
-	public GraphFrame F9(ArrayList<ArrayList<Object>> input, int x){
+	public GraphFrame weightedSubgraphWithLabels(ArrayList<ArrayList<Object>> input, int x){
 
 		JavaSparkContext jsc=new JavaSparkContext(spark.sparkContext());
 		JavaRDD<Row> N=jsc.emptyRDD();
