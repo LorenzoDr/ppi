@@ -3,15 +3,10 @@ package ppispark.functions;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import com.mongodb.spark.MongoSpark;
 import org.apache.spark.SparkContext;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.rdd.RDD;
@@ -71,12 +66,12 @@ public class PPInetwork {
 	        return graph;
     }
 
-	public void exportToTsv(String directoryName) {
+	public void exportToTsv(GraphFrame g,String filename) {
 		spark.sparkContext().hadoopConfiguration().set("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false");
 		spark.sparkContext().hadoopConfiguration().set("parquet.enable.summary-metadata", "false");
 
-		graph.edges().coalesce(1).write().format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").csv(directoryName);
-		File f = new File(directoryName);
+		graph.edges().coalesce(1).write().format("com.databricks.spark.csv").option("header", "true").option("delimiter", "\t").csv("output");
+		File f = new File("output");
 
 		for(String s:f.list()){
 			if(s.endsWith("crc")){
@@ -84,12 +79,74 @@ public class PPInetwork {
 				file.delete();
 			}else{
 				File file=new File("output/"+s);
-				File file1=new File("output/graph");
+				File file1=new File(filename);
 				file.renameTo(file1);
+				f.delete();
 			}
 		}
 	}
-	
+
+	//MongoDB
+	public GraphFrame importEdgesFromMongoDB(String uri, String src, String dst) {
+		SparkContext sc=spark.sparkContext();
+		JavaSparkContext jsc = new JavaSparkContext(sc);
+		jsc.sc().conf()
+				.set("spark.mongodb.input.uri", uri)
+				.set("spark.mongodb.output.uri", uri);
+
+		Dataset<Row> edges = MongoSpark.load(jsc).toDF();
+
+		edges=edges.drop("_id");
+		edges=edges.withColumnRenamed(src,"src");
+		edges=edges.withColumnRenamed(dst,"dst");
+
+		GraphFrame g=GraphFrame.fromEdges(edges);
+		return g;
+	}
+
+	public GraphFrame importGraphFromMongoDB(String edgesUri,String nodesUri,String id,String src,String dst) {
+		SparkContext sc=spark.sparkContext();
+		JavaSparkContext jsc = new JavaSparkContext(sc);
+
+		jsc.sc().conf()
+				.set("spark.mongodb.input.uri", edgesUri)
+				.set("spark.mongodb.output.uri", edgesUri);
+		Dataset<Row> edges = MongoSpark.load(jsc).toDF();
+		edges=edges.drop("_id");
+		edges=edges.withColumnRenamed(src,"src");
+		edges=edges.withColumnRenamed(dst,"dst");
+
+		jsc.sc().conf()
+				.set("spark.mongodb.input.uri", nodesUri)
+				.set("spark.mongodb.output.uri", nodesUri);
+		Dataset<Row> nodes= MongoSpark.load(jsc).toDF();
+		nodes=nodes.drop("_id");
+		nodes=nodes.withColumnRenamed(id,"id");
+
+		return GraphFrame.apply(nodes,edges);
+	}
+	public void toMongoDB(String uri,String collection){
+		SparkContext sc=spark.sparkContext();
+		JavaSparkContext jsc = new JavaSparkContext(sc);
+
+		jsc.sc().conf()
+				.set("spark.mongodb.input.uri", uri)
+				.set("spark.mongodb.output.uri",uri);
+		MongoSpark.write(graph.edges()).option("collection", collection).mode("overwrite").save();
+	}
+
+	public void toMongoDB(String uri,String edgesCollection,String nodesCollection){
+		SparkContext sc=spark.sparkContext();
+		JavaSparkContext jsc = new JavaSparkContext(sc);
+
+		jsc.sc().conf()
+				.set("spark.mongodb.input.uri", uri)
+				.set("spark.mongodb.output.uri",uri);
+		MongoSpark.write(graph.edges()).option("collection", edgesCollection).mode("overwrite").save();
+		MongoSpark.write(graph.edges()).option("collection", nodesCollection).mode("overwrite").save();
+
+	}
+
 	//LOAD GRAPH FROM NEO4J
 	public GraphFrame importGraphFromNeo4j(String url, String user, String password, String[] nodesProperties, String[] edgesProperties) {
 		spark.sparkContext().conf()//.set("spark.neo4j.encryption.status","false")
@@ -293,13 +350,13 @@ public class PPInetwork {
 	//	graphUtil.toNeo4J(spark);
 
 	//}
-	public void loadSubgraphToNeo4j(String url, String user, String password,String reltype){
+	public void updateSubgraphLabels(String url, String user, String password,String reltype){
 		Driver driver = GraphDatabase.driver(url, AuthTokens.basic(user, password));
 		Session s =driver.session();
 		String cql;
 
 		for(Row r:graph.edges().toJavaRDD().collect()){
-			cql="MATCH (a),(b) WHERE a.name='"+r.getString(0)+"' AND b.name='"+r.getString(1)+"' CREATE (a)-[r:"+reltype+"]->(b)";
+			cql="MATCH (a),(b) WHERE a.name='"+r.getString(0)+"' AND b.name='"+r.getString(1)+"' SET r."+reltype+"=true";
 		}
 		s.close();
 	}

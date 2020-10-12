@@ -60,7 +60,13 @@ public class test {
 		nodes.add("uniprotkb:P51076");
 		nodes.add("uniprotkb:P51071");
 
-		ppi.loadSubgraphToNeo4j("bolt://localhost:7687","ciro","Cirociro94","rel");
+		//GraphFrame g=ppi.importEdgesFromMongoDB("mongodb://localhost:27017/PPI-network.Edges","src","dst");
+		//GraphFrame g=ppi.importGraphFromMongoDB("mongodb://localhost:27017/PPI-network.Edges","mongodb://localhost:27017/PPI-network.Nodes","name","src","dst");
+		//g.edges().show();
+		//g.vertices().show();
+		ppi.toMongoDB();
+		//ppi.exportToTsv("graph");
+		//ppi.loadSubgraphToNeo4j("bolt://localhost:7687","ciro","Cirociro94","rel");
 
 
 	}

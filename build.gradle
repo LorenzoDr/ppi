@@ -54,4 +54,8 @@ dependencies {
 
     // https://mvnrepository.com/artifact/org.apache.spark/spark-graphx
     compile group: 'neo4j-contrib', name: 'neo4j-spark-connector', version: '2.4.5-M2'
+
+    // https://mvnrepository.com/artifact/org.mongodb.spark/mongo-spark-connector
+    compile group: 'org.mongodb.spark', name: 'mongo-spark-connector_2.12', version: '3.0.0'
+
 }

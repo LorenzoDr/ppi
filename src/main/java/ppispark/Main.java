@@ -27,7 +27,7 @@ public class Main {
         Logger.getLogger("org").setLevel(Level.WARN);
         Logger.getLogger("akka").setLevel(Level.WARN);
 
-        boolean local = false;
+        boolean local = true;
 
         String path = local ? "data/human_small.tsv" : args[0];
         // path = local ? "data/ridotto.tsv" : args[0];
@@ -35,7 +35,7 @@ public class Main {
         SparkSession spark;
 
         if (local){
-            //System.setProperty("spark.sql.legacy.allowUntypedScalaUDF", "true");
+            System.setProperty("spark.sql.legacy.allowUntypedScalaUDF", "true");
             spark = SparkSession
                     .builder()
                     .master("local[*]")
@@ -88,8 +88,8 @@ public class Main {
         GraphFrame g=filterByNeighbors(graph,N,2,false);
         System.out.println("Number of vertices in the subgraph of N and its x-neighbors: "+g.vertices().count());
 
-        exportToTsv(g,spark);
-        System.out.println("The graph of N and its x-neighbors is saved in the output folder");
+        //exportToTsv(g,spark);
+        //System.out.println("The graph of N and its x-neighbors is saved in the output folder");
 
         String url=local ? "bolt://localhost:7687": args[1];
         String user=local ? "neo4j":args[2];
@@ -97,20 +97,22 @@ public class Main {
         String[] nodesProp=new String[]{"name"};
         String[] edgeProp=new String[]{"alt_id_A", "alt_id_B"};
 
-        GraphFrame g1=importGraphFromNeo4j(spark,url,user,password,nodesProp,edgeProp);
-        System.out.println("Number of nodes imported from neo4j:" +g1.vertices().count());
-        System.out.println("Number of edges imported from neo4j:" +g1.edges().count());
+       GraphFrame g1=importGraphFromNeo4j(spark,url,user,password,nodesProp,edgeProp);
+       System.out.println("Number of nodes imported from neo4j:" +g1.vertices().count());
+       System.out.println("Number of edges imported from neo4j:" +g1.edges().count());
 
-        loadSubgraphToNeo4j(url,user,password,"subgraph1",g1);
-        System.out.println("Loaded in neo4j the edges describing the subgraph of N and its x-neighbors");
 
+       loadSubgraphToNeo4j(url,user,password,"subgraph1",g);
+       System.out.println("Loaded in neo4j the edges describing the subgraph of N and its x-neighbors");
     }
+
     public static void loadSubgraphToNeo4j(String url, String user, String password,String reltype,GraphFrame graph){
         Driver driver = GraphDatabase.driver(url, AuthTokens.basic(user, password));
         Session s =driver.session();
         String cql;
 
-        for(Row r:graph.edges().toJavaRDD().collect()){
+        String[] prova=new String[]{"p8,p13","p1,p4"};
+       for(Row r:graph.edges().toJavaRDD().collect()){
             cql="MATCH (a),(b) WHERE a.name='"+r.getString(0)+"' AND b.name='"+r.getString(1)+"' CREATE (a)-[r:"+reltype+"]->(b)";
             s.run(cql);
         }
