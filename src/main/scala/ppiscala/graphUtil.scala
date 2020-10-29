@@ -31,18 +31,11 @@ object graphUtil {
   }
 
 
- /* def toNeo4J(spark: SparkSession) = {
-    val g = Neo4jGraph.loadGraph(spark.sparkContext, label1="protein", relTypes=Seq("RELTYPE"),  label2="protein")
+  def toNeo4J(g: GraphFrame,spark: SparkSession) = {
 
-    spark.sparkContext.getConf.getAll.foreach(println)
-    g.vertices.take(3).foreach(println)
-    println(g.vertices.count())
-    println(g.edges.count())
-    val g2 = PageRank.run(g, numIter = 5)
-    g2.vertices.take(2).foreach(println)
-    Neo4jGraph.saveGraph(spark.sparkContext, g2, nodeProp = "rank", null, merge = false)
+    Neo4jGraph.saveGraph(spark.sparkContext, g.toGraphX, nodeProp = "id", null, merge = true)
 
-  }*/
+  }
 
 
   def dfSchema(columnNames: List[String]): StructType =
@@ -62,7 +55,7 @@ object graphUtil {
       )
     )
 
-  def maxWeightedPaths(g: GraphFrame, s: String, spark: SparkSession): DataFrame = {
+  def maxWeightedPaths(g: GraphFrame, s: String, spark: SparkSession,weightIndex :Int): DataFrame = {
     var i = 0
     val verticesRDD = g.toGraphX.vertices
     val origin = verticesRDD.filter(t => t._2.getString(0).equals(s)).collect()(0)._1
@@ -77,7 +70,7 @@ object graphUtil {
           ._1
       val newDistances = g1.aggregateMessages[Double](
         ctx => if (ctx.srcId == currentVertexId)
-          ctx.sendToDst(ctx.srcAttr._2 + ctx.attr.getInt(42)),
+          ctx.sendToDst(ctx.srcAttr._2 + ctx.attr.getInt(weightIndex)),//42
         (a, b) => math.max(a, b))
 
       g1 = g1.outerJoinVertices(newDistances)((vid, vd, newSum) =>

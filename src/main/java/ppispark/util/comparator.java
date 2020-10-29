@@ -1,4 +1,4 @@
-package ppispark.functions;
+package ppispark.util;
 
 import java.io.Serializable;
 import java.util.Comparator;

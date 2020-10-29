@@ -1,4 +1,4 @@
-package ppispark.functions;
+package ppispark.util;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -6,10 +6,7 @@ import java.util.ArrayList;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
-import org.apache.spark.graphx.Edge;
 import org.apache.spark.sql.*;
-import org.graphframes.GraphFrame;
-import ppiscala.graphUtil;
 
 public class test {
 	public static void main(String[] args) throws IOException {
@@ -33,7 +30,7 @@ public class test {
 			System.setProperty("hadoop.home.dir", "C:\\Users\\loren\\eclipse\\winutils");
 			System.setProperty("spark.sql.legacy.allowUntypedScalaUDF", "true");
 			spark = SparkSession.builder().config(sparkConf).master("local[*]")
-					// .appName("biograph")
+					.appName("biograph")
 					.getOrCreate();
 		} else {
 			spark = SparkSession.builder().master("yarn").appName("biograph").config("spark.executor.instances", "8")
@@ -64,7 +61,7 @@ public class test {
 		//GraphFrame g=ppi.importGraphFromMongoDB("mongodb://localhost:27017/PPI-network.Edges","mongodb://localhost:27017/PPI-network.Nodes","name","src","dst");
 		//g.edges().show();
 		//g.vertices().show();
-		ppi.toMongoDB();
+		//ppi.toMongoDB();
 		//ppi.exportToTsv("graph");
 		//ppi.loadSubgraphToNeo4j("bolt://localhost:7687","ciro","Cirociro94","rel");
 
