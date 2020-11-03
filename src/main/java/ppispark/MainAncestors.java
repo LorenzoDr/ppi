@@ -37,7 +37,7 @@ public class MainAncestors {
                 .withColumnRenamed("tmp","dst");
 
         GraphFrame input=GraphFrame.fromEdges(invertedEdges);
-        graphUtil.commonAncestors(input,"uniprotkb:P51585","uniprotkb:P51591",spark);
+        graphUtil.commonAncestors(input,"uniprotkb:P51585","uniprotkb:P51591");
 
     }
 }
