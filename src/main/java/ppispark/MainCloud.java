@@ -17,14 +17,14 @@ import java.util.Arrays;
 public class MainCloud {
     public static void main(String[] args) {
         SparkSession spark;
-        String Isource=args[0];
-        String Osource=args[1];
+        String Isource = args[1];
+        String Odest = args[2];
 
-        //String IOsource="mongo";
-        int startingIndex=0;
-        int weightIndex=0;
+        String[] Iparameters;
+        String[] Oparameters;
+        int weightIndex = 0;
         PPInetwork ppi;
-        boolean local=false;
+        boolean local = true;
 
         Logger.getLogger("org").setLevel(Level.WARN);
         Logger.getLogger("akka").setLevel(Level.WARN);
@@ -42,50 +42,44 @@ public class MainCloud {
                     .getOrCreate();
         }
 
-        //ppi = new PPInetwork(spark, args[1]);
 
         switch (Isource) {
-            case "neo":
-                //ppi=new PPInetwork(spark,"bolt://localhost:7687","neo4j","Cirociro94","");
-                ppi = new PPInetwork(spark,args[2],args[3],args[4],"");
-                startingIndex=5;
-                weightIndex=2;
+            case "neo4j":
+                Iparameters = args[3].split(",");
+                ppi = new PPInetwork(spark, Iparameters[0], Iparameters[1], Iparameters[2], Iparameters[3]);
+                weightIndex = 42;
                 break;
-            case "mongo":
-                ppi = new PPInetwork(spark,"mongodb://localhost:27017/PPI-network.Edges","src","dst");
-                ppi = new PPInetwork(spark,args[2],args[3],args[4]);
-                startingIndex=5;
-                weightIndex=4;
+            case "mongodb":
+                Iparameters = args[3].split(",");
+                //mongodb://localhost:27017/PPI-network.Edges
+                ppi = new PPInetwork(spark, Iparameters[0] + "/" + Iparameters[1] + "." + Iparameters[2], Iparameters[3], Iparameters[4]);
+                weightIndex = 42;
                 break;
             default:
-                //ppi = new PPInetwork(spark, "data/unweightedGraph.tsv");
-                ppi = new PPInetwork(spark, args[2]);
-                weightIndex=42;
-                startingIndex=3;
+                ppi = new PPInetwork(spark, args[3]);
+                weightIndex = 42;
                 break;
         }
-        //ppi.vertices().show();
-       // ppi.edges().show();
+        //Dataset<Row> edges=ppi.getGraph().edges().withColumn("weight", org.apache.spark.sql.functions.lit(0));
+        //GraphFrame graph1=GraphFrame.fromEdges(edges);
+        //graphUtil.dijkstra(graph1,"uniprotkb:P51587",42,spark);
 
-        //String[] functionArgs=new String[]{}; //Arrays.copyOfRange(args,startingIndex,args.length-1);
-        GraphFrame output=GraphMiner.apply(ppi,spark,1,args[3],weightIndex);
-        //GraphFrame output=GraphMiner.apply(ppi,spark,1,"uniprotkb:P51502",weightIndex);
-        //output.edges().show();
-        //output.vertices().show();
-        //System.out.println("V:"+output.vertices().count());
-        //System.out.println("E:"+output.edges().count());
+        String[] functionArgs=Arrays.copyOfRange(args,5,args.length);
+        GraphFrame output=GraphMiner.apply(ppi,spark,args[0],functionArgs,weightIndex);
 
-        switch (Osource) {
-            case "neo":
-                //IOfunction.updateSubgraphLabels(output,"bolt://localhost:7687","neo4j","Cirociro94","");
-                IOfunction.toNeo4j(output,spark,args[4],args[5],args[6]);
+
+        switch (Odest) {
+            case "neo4j":
+                IOfunction.exportToTsv(spark,output,args[4]);
                 break;
-            case "mongo":
+            case "mongodb":
+                Oparameters=args[4].split(",");
                 //IOfunction.toMongoDB(spark,output,"mongodb://localhost:27017/PPI-network.Edges","");
-                IOfunction.toMongoDB(spark,output,args[4],args[5]);
+                IOfunction.toMongoDB(spark,output,Oparameters[0]+"/"+Oparameters[1],Oparameters[2]);
+                //IOfunction.toMongoDB(spark,ppi.getGraph(),Oparameters[0]+"/"+Oparameters[1],Oparameters[2]);
                 break;
             default:
-                IOfunction.exportToTsv(spark,output,"F4");
+                IOfunction.exportToTsv(spark,output,args[4]);
                 break;
         }
     }

@@ -38,9 +38,9 @@ public class PPInetwork {
 
 	}
 	//PPI FROM NEO4J
-	public PPInetwork(SparkSession spark,String url,String user,String password,String str){
+	public PPInetwork(SparkSession spark,String url,String user,String password,String id){
 		this.spark=spark;
-		graph= IOfunction.fromNeo4j(spark,url,user,password);
+		graph= IOfunction.fromNeo4j(spark,url,user,password,id);
 		spark.sparkContext().setCheckpointDir("PPI-Check");
 
 	}
@@ -57,6 +57,9 @@ public class PPInetwork {
 	}
 	public Dataset<Row> edges(){
 		return graph.edges();
+	}
+	public void filterOnEdges(String condition){
+		graph.filterEdges(condition);
 	}
 	public long edgesCounter(){
 		return graph.edges().count();

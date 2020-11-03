@@ -43,14 +43,14 @@ public class IOfunction {
         return graph;
     }
 
-    public static void exportToTsv(SparkSession spark,GraphFrame g,String filename) {
+    public static void exportToTsv(SparkSession spark,GraphFrame g,String outputName) {
         spark.sparkContext().hadoopConfiguration().set("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false");
         spark.sparkContext().hadoopConfiguration().set("parquet.enable.summary-metadata", "false");
 
-        g.edges().coalesce(1).write().format("org.apache.spark.sql.execution.datasources.csv.CSVFileFormat").option("header", "true").option("delimiter", "\t").save("output");
+        g.edges().coalesce(1).write().format("org.apache.spark.sql.execution.datasources.csv.CSVFileFormat").option("header", "true").option("delimiter", "\t").save(outputName);
         File f = new File("output");
 
-        for(String s:f.list()){
+      /*  for(String s:f.list()){
             if(s.endsWith("crc")){
                 File file=new File("output/"+s);
                 file.delete();
@@ -60,7 +60,7 @@ public class IOfunction {
                 file.renameTo(file1);
                 f.delete();
             }
-        }
+        }*/
     }
 
     //MongoDB
@@ -68,8 +68,8 @@ public class IOfunction {
         SparkContext sc=spark.sparkContext();
         JavaSparkContext jsc = new JavaSparkContext(sc);
         jsc.sc().conf()
-                .set("spark.mongodb.input.uri", uri)
-                .set("spark.mongodb.output.uri", uri);
+                .set("spark.mongodb.input.uri", "mongodb://"+uri)
+                .set("spark.mongodb.output.uri", "mongodb://"+uri);
 
         Dataset<Row> edges = MongoSpark.load(jsc).toDF();
 
@@ -106,8 +106,8 @@ public class IOfunction {
         JavaSparkContext jsc = new JavaSparkContext(sc);
 
         jsc.sc().conf()
-                .set("spark.mongodb.input.uri", uri)
-                .set("spark.mongodb.output.uri",uri);
+                .set("spark.mongodb.input.uri", "mongodb://"+uri+".")
+                .set("spark.mongodb.output.uri","mongodb://"+uri+".");
         MongoSpark.write(graph.edges()).option("collection", collection).mode("overwrite").save();
     }
 
@@ -123,9 +123,9 @@ public class IOfunction {
 
     }
     //NEO4J
-    public static GraphFrame fromNeo4j(SparkSession spark,String url, String user, String password) {
+    public static GraphFrame fromNeo4j(SparkSession spark,String url, String user, String password, String id) {
         spark.sparkContext().conf()//.set("spark.neo4j.encryption.status","false")
-                .set("spark.neo4j.url", url)
+                .set("spark.neo4j.url", "bolt://"+url)
                 .set("spark.neo4j.user", user)
                 .set("spark.neo4j.password", password);
 
@@ -133,7 +133,7 @@ public class IOfunction {
 
         Neo4j conn = new Neo4j(spark.sparkContext());
 
-        RDD<Row> rddEdges=conn.cypher("MATCH (a)-[r]->(b) RETURN toString(a.name),toString(b.name)",JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
+        RDD<Row> rddEdges=conn.cypher("MATCH (a)-[r]->(b) RETURN toString(a."+id+"),toString(b."+id+")",JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
 
         Dataset<Row> edges=spark.createDataFrame(rddEdges.toJavaRDD(),schemaEdges);
 
@@ -334,13 +334,13 @@ public class IOfunction {
         return importGraphFromNeo4j(spark,url,user,password,nodesLabels,edgesProperties,nodesCondition,edgesCondition,true);
     }
 
-    public static void toNeo4j(GraphFrame g,SparkSession spark,String url, String user, String password){
-    	spark.sparkContext().conf()
-    			.set("spark.neo4j.url", url)
-    			.set("spark.neo4j.user", user)
-    			.set("spark.neo4j.password", password);
-    	graphUtil.toNeo4J(g,spark);
-    }
+   /* public static void toNeo4j(GraphFrame g,SparkSession spark,String url, String user, String password){
+        spark.sparkContext().conf()
+                .set("spark.neo4j.url", url)
+                .set("spark.neo4j.user", user)
+                .set("spark.neo4j.password", password);
+        graphUtil.toNeo4J(g,spark);
+    }*/
 
     public static void updateSubgraphLabels(GraphFrame graph,String url, String user, String password,String reltype){
         Driver driver = GraphDatabase.driver(url, AuthTokens.basic(user, password));

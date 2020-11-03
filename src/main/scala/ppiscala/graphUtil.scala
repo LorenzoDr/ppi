@@ -17,26 +17,89 @@ import org.neo4j.spark.cypher.{NameProp, Pattern}
 
 object graphUtil {
 
-  def saveDfToCsv(df: DataFrame, tsvOutput: String) {
-     // format("com.databricks.spark.csv").
-    df
-      .coalesce(1)
-      .write
-      .mode ("overwrite")
-      .format("com.databricks.spark.csv")
-      .option("header", "true")
-      .option("delimiter", "\t")
-      .save("filename.csv")
 
+  def commonAncestors(g: GraphFrame, n1:String, n2:String,spark: SparkSession)= {
+
+    var inputGraph = g.toGraphX.mapVertices((_, attr) => {
+      val vertex = (attr.getString(0),Array(if(attr.getString(0)==n1)1 else 0,if(attr.getString(0)==n2)1 else 0))
+      vertex
+    })
+
+    inputGraph=inputGraph.pregel(Array.fill(2)(0),50,EdgeDirection.Either)(
+      (_, attr, newArr) =>{
+        val minDist = Array.ofDim[Int](newArr.length)
+
+        for (i <- newArr.indices)
+          minDist(i) = math.max(attr._2(i), newArr(i))
+
+        (attr._1, minDist)
+      },
+      triplet => {
+        val minDist = Array.ofDim[Int](triplet.srcAttr._2.length)
+        var updated = false
+
+        for (i <- triplet.srcAttr._2.indices)
+          if (triplet.srcAttr._2(i) > triplet.dstAttr._2(i)) {
+            minDist(i) = triplet.srcAttr._2(i)
+            updated = true
+          }
+          else
+            minDist(i) = triplet.dstAttr._2(i)
+
+        if (updated)
+          Iterator((triplet.dstId, minDist))
+        else
+          Iterator.empty
+      },
+      (dist1, dist2) => {
+        val minDist = Array.ofDim[Int](dist1.length)
+
+        for (i <- dist1.indices)
+          minDist(i) = math.max(dist1(i), dist2(i))
+
+        minDist
+      }
+    )
+    inputGraph.vertices.foreach(t=>println(t._2._1+" "+t._2._2(0).toString+" "+t._2._2(1).toString))
+
+    System.out.println(inputGraph.vertices.values.filter(t=>(t._2(0)+t._2(1)==2)).count());
   }
 
 
-  def toNeo4J(g: GraphFrame,spark: SparkSession) = {
+  /* def dijkstra(g: GraphFrame, sourceNode:String, weightIndex:Int,spark: SparkSession)= {
 
-    Neo4jGraph.saveGraph(spark.sparkContext, g.toGraphX, nodeProp = "id", null, merge = true)
+     val initialGraph = g.toGraphX.mapVertices((_, attr) => {
+       val vertex = (attr.getString(0), if (attr.getString(0) == sourceNode) 1.0 else 0.0)
+       vertex
+     })
 
-  }
+     val distanceGraph = initialGraph.pregel(0.0)(
+       (_, attr, newDist) => (attr._1, math.max(attr._2, newDist)),
+       triplet => {
+         //Distance accumulator
+         if (triplet.srcAttr._2 + triplet.attr.getInt(weightIndex) > triplet.dstAttr._2) {
+           Iterator((triplet.dstId, triplet.srcAttr._2 + triplet.attr.getInt(weightIndex)))
+         } else {
+           Iterator.empty
+         }
+       },
+       (a, b) => math.max(a, b)
+     )
 
+     distanceGraph.vertices.foreach(println)
+   }*/
+
+
+
+
+/*  def toNeo4J(g: GraphFrame,spark: SparkSession) = {
+
+    g.toGraphX.
+    //Neo4jGraph.saveGraph(spark.sparkContext, g.toGraphX, nodeProp = null, null, merge = true)
+
+  }*/
+
+/*
 
   def dfSchema(columnNames: List[String]): StructType =
     StructType(
@@ -157,6 +220,7 @@ object graphUtil {
     return output
   }
 
+*/
 
 
 

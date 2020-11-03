@@ -16,26 +16,31 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 public class GraphMiner {
-    public static GraphFrame apply(PPInetwork ppi,SparkSession spark,int functionIndex,String inputNode,int weightIndex){
+    public static GraphFrame apply(PPInetwork ppi,SparkSession spark,String function,String[] functionArgs,int weightIndex){
 
         GraphFrame output=ppi.getGraph();
-        switch (functionIndex){
-            case 1: //F4
-                ArrayList<Object> N=new ArrayList<Object>();
-                N.add(inputNode);
-                output=xNeighborsGraph(output,N,2);//(output,N,functionArgs[1]) // N e x
+        String[] inputNodes;
+        ArrayList<Object> N;
+
+        switch (function){
+            case "F4":
+                inputNodes=functionArgs[0].split(",");
+                N=new ArrayList<Object>();
+                for(String node:inputNodes){
+                    N.add(node);
+                }
+                output=xNeighborsGraph(output,N,Integer.parseInt(functionArgs[1]));
                 break;
-            case 2: //F6
-                output=xNeighborsWeightedGraph(output,spark,"uniprotkb:P51584",3,weightIndex);  //Spark inputnode x
+            case "F6":
+                output=xNeighborsWeightedGraph(output,spark,functionArgs[0],Integer.parseInt(functionArgs[1]),weightIndex);
                 break;
-            case 3: //F7
-               //output=xNeighborsWeightedGraph(output);//GraphFrame graph,SparkSession spark,ArrayList<Object> input, int x
-                break;
-            case 4:
-               //output=neighborsWeightedGraph(output); //GraphFrame graph,SparkSession spark,ArrayList<ArrayList<Object>> input, int x
-                break;
-            case 5:
-                //output=weightedSubgraphWithLabels(output); //GraphFrame graph,SparkSession spark,ArrayList<ArrayList<Object>> input, int x
+            case "F7":
+                inputNodes=functionArgs[0].split(",");
+                N=new ArrayList<Object>();
+                for(String node:inputNodes){
+                    N.add(node);
+                }
+                output=xNeighborsWeightedGraph(output,spark,N,Integer.parseInt(functionArgs[1]),weightIndex);
                 break;
         }
         return output;
@@ -131,10 +136,13 @@ public class GraphMiner {
     //F5
     public static Dataset<Row> xWeightedNeighbors(GraphFrame graph,SparkSession spark,String inputNode, int x,int weightIndex){
 
-        Dataset<Row> edges=graph.edges().withColumn("weight", org.apache.spark.sql.functions.lit(-1));
-        GraphFrame graph1=GraphFrame.fromEdges(edges);
-        graph1.edges().show();
-        Dataset<Row> weightedPath= graphUtil.maxWeightedPaths(graph1,inputNode,spark,weightIndex);
+        graph=graph.filterEdges("src!=dst");
+        Dataset<Row> edges=graph.edges();
+        edges=edges.withColumn("weight", org.apache.spark.sql.functions.lit(-1));
+        GraphFrame inputGraph=GraphFrame.fromEdges(edges);
+        inputGraph=inputGraph.filterEdges("dst!='"+inputNode+"'");
+        Dataset<Row> weightedPath= null;//graphUtil.dijkstra(inputGraph,inputNode,weightIndex,spark);
+        weightedPath.show(20);
         return weightedPath.filter("weight>="+x+" OR weight==0");
     }
 
@@ -150,10 +158,10 @@ public class GraphMiner {
     }
 
     //F7
-    public static GraphFrame xNeighborsWeightedGraph(GraphFrame graph,SparkSession spark,ArrayList<Object> input, int x){
+    public static GraphFrame xNeighborsWeightedGraph(GraphFrame graph,SparkSession spark,ArrayList<Object> input, int x,int weightIndex){
         Dataset<Row> edges=graph.edges().withColumn("weight", org.apache.spark.sql.functions.lit(-1));
         GraphFrame graph1=GraphFrame.fromEdges(edges);
-        Dataset<Row> xNeighbors=graphUtil.maxWeightedPaths(graph1,input,spark);
+        Dataset<Row> xNeighbors=null;//graphUtil.maxWeightedPaths(graph1,input,spark);
         Dataset<Row> vertices=xNeighbors.filter("weight>="+x+" OR weight==0")
                 .groupBy("id")
                 .agg(org.apache.spark.sql.functions.collect_list("key").as("key"));
@@ -180,7 +188,7 @@ public class GraphMiner {
         Dataset<Row> xNeighbors = spark.read().schema(s).csv(spark.emptyDataset(Encoders.STRING()));
 
         for(int i=0;i< input.size();i++){
-            Dataset<Row> tmp=graphUtil.maxWeightedPaths(graph1, input.get(i),i,spark);
+            Dataset<Row> tmp=null;//graphUtil.maxWeightedPaths(graph1, input.get(i),i,spark);
             xNeighbors=xNeighbors.union(tmp);
         }
         Dataset<Row> vertices=xNeighbors.filter("weight>="+x+" OR weight==0")
@@ -221,7 +229,7 @@ public class GraphMiner {
                 .agg(org.apache.spark.sql.functions.collect_list("N").as("N"));;
 
 
-        GraphFrame g=xNeighborsWeightedGraph(graph,spark,input.get(0),x);
+        GraphFrame g=xNeighborsWeightedGraph(graph,spark,input.get(0),x,42);
         Dataset<Row> vertices=g.vertices();
         vertices=vertices.join(prova,vertices.col("id")
                 .equalTo(prova.col("id1")),"left")
