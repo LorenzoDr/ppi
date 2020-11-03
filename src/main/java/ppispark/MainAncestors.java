@@ -2,7 +2,11 @@ package ppispark;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.apache.spark.graphx.EdgeDirection;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.graphframes.GraphFrame;
 import ppiscala.graphUtil;
 import ppispark.util.PPInetwork;
 
@@ -28,9 +32,12 @@ public class MainAncestors {
         }
 
         PPInetwork ppi = new PPInetwork(spark, args[0]);
+        Dataset<Row> invertedEdges=ppi.edges().withColumnRenamed("src","tmp")
+                .withColumnRenamed("dst","src")
+                .withColumnRenamed("tmp","dst");
 
-        graphUtil.commonAncestors(ppi.getGraph(),"uniprotkb:P51585","uniprotkb:P51591",spark);
-
+        GraphFrame input=GraphFrame.fromEdges(invertedEdges);
+        graphUtil.commonAncestors(input,"uniprotkb:P51585","uniprotkb:P51591",spark);
 
     }
 }

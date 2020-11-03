@@ -25,7 +25,7 @@ object graphUtil {
       vertex
     })
 
-    inputGraph=inputGraph.pregel(Array.fill(2)(0),50,EdgeDirection.Either)(
+    inputGraph=inputGraph.pregel(Array.fill(2)(0),20,EdgeDirection.Either)(
       (_, attr, newArr) =>{
         val minDist = Array.ofDim[Int](newArr.length)
 
