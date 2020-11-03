@@ -9,6 +9,7 @@ import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType, StructFi
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import java.util
 
+import org.apache.spark.SparkContext
 import org.apache.spark.graphx.lib.PageRank
 import org.neo4j.spark._
 import org.neo4j.spark.cypher.{NameProp, Pattern}
@@ -17,8 +18,49 @@ import org.neo4j.spark.cypher.{NameProp, Pattern}
 
 object graphUtil {
 
+  def main(args: Array[String]): Unit = {
+    /*
+     a (1)   b (2)
+       \   /
+         c (3)
+       /   \
+     d (4)   e (5)
+       \   /
+         f (6)
+       /   \
+     g (7)   h (8)
 
-  def commonAncestors(g: GraphFrame, n1:String, n2:String,spark: SparkSession)= {
+     */
+
+    val spark = new SparkContext("local[*]", "test-graphx")
+
+    val nodes : RDD[(VertexId, String)] = spark.parallelize(Seq((1, "a"), (2, "b"), (3, "c"), (4, "d"), (5, "e"), (6, "f"), (7, "g"), (8, "h")))
+    val edges : RDD[Edge[Int]] = spark.parallelize(Seq(Edge(1, 3, 1), Edge(2, 3, 1), Edge(3, 4, 1), Edge(3, 5, 1), Edge(4, 6, 1), Edge(5, 6, 1), Edge(6, 7, 1), Edge(6, 8, 1)))
+    val graph = Graph(nodes, edges)
+
+    println(commonAncestors(graph, "d", "e").mkString("Array(", ", ", ")"))
+  }
+
+  def commonAncestors(g: Graph[String, Int], n1:String, n2:String) : Array[(VertexId, (String, (Boolean, Boolean)))] = {
+    var graph = g.mapVertices((_, name) => (name, (name == n1, name == n2)))
+
+    graph = graph.pregel((false, false), activeDirection=EdgeDirection.In)(
+      (_, vertex, new_visited) => (vertex._1, (vertex._2._1 || new_visited._1, vertex._2._2 || new_visited._2)),
+      triplet => {
+        val to_update = (!triplet.srcAttr._2._1 && triplet.dstAttr._2._1) || (!triplet.srcAttr._2._2 && triplet.dstAttr._2._2)
+
+        if (to_update)
+          Iterator((triplet.srcId, (triplet.srcAttr._2._1 || triplet.dstAttr._2._1, triplet.srcAttr._2._2 || triplet.dstAttr._2._2)))
+        else
+          Iterator.empty
+      },
+      (visited1, visited2) => (visited1._1 || visited2._1, visited1._2 || visited2._2)
+    )
+
+    graph.vertices.collect()
+  }
+
+  def commonAncestors(g: GraphFrame, n1:String, n2:String): Unit = {
 
     var inputGraph = g.toGraphX.mapVertices((_, attr) => {
       val vertex = (attr.getString(0),Array(if(attr.getString(0)==n1)1 else 0,if(attr.getString(0)==n2)1 else 0))
