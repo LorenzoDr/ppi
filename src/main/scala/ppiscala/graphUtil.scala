@@ -43,8 +43,8 @@ object graphUtil {
     println(commonAncestors(graphFrame, "d", "e").mkString("Array(", ", ", ")"))
   }
 
-  def commonAncestors(g: GraphFrame, n1:String, n2:String) : Array[String] = {
-    var graph = g.toGraphX.mapVertices((_, row) => (row.getString(1), (row.getString(1) == n1, row.getString(1) == n2)))
+  def commonAncestors(g: GraphFrame, id1:Long, id2:Long) : Array[Long] = {
+    var graph = g.toGraphX.mapVertices((_, row) => (row.getString(1), (row.getString(1) == id1, row.getString(1) == n2)))
 
     graph = graph.pregel((false, false), activeDirection=EdgeDirection.In)(
       (_, vertex, new_visited) => (vertex._1, (vertex._2._1 || new_visited._1, vertex._2._2 || new_visited._2)),

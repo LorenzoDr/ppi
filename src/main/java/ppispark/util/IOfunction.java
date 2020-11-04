@@ -129,17 +129,15 @@ public class IOfunction {
                 .set("spark.neo4j.user", user)
                 .set("spark.neo4j.password", password);
 
-        StructType schemaEdges=new StructType().add("src","String").add("dst","String");
+        StructType schemaEdges = new StructType().add("src","String").add("dst","String");
 
         Neo4j conn = new Neo4j(spark.sparkContext());
 
-        RDD<Row> rddEdges=conn.cypher("MATCH (a)-[r]->(b) RETURN toString(a.gGOid),toString(b.GOid)",JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
+        RDD<Row> rddEdges = conn.cypher("MATCH (a)-[r]->(b) RETURN toString(a.GOid),toString(b.GOid)",JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.conforms())).loadRowRdd();
 
-        Dataset<Row> edges=spark.createDataFrame(rddEdges.toJavaRDD(),schemaEdges);
+        Dataset<Row> edges = spark.createDataFrame(rddEdges.toJavaRDD(),schemaEdges);
 
-        GraphFrame output=GraphFrame.fromEdges(edges);
-
-        return output;
+        return GraphFrame.fromEdges(edges);
     }
     //NEO4J
     public static GraphFrame fromNeo4j(SparkSession spark,String url, String user, String password, String id) {
