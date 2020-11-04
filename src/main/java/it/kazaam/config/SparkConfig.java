@@ -16,10 +16,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SparkConfig {
 	
-    @Value("ProvaSpark")
+    @Value("${spark.appname}")
     private String appName;
     
-    @Value("local[*]")
+    @Value("${spark.master}")
     private String masterUri;
     
     @Bean
