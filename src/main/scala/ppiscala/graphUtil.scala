@@ -22,8 +22,8 @@ object graphUtil {
     /*
      a (1)   b (2)
        \   /
-         c (3)
-       /   \
+         c (3)  i (9)
+       /   \   /
      d (4)   e (5)
        \   /
          f (6)
@@ -32,17 +32,19 @@ object graphUtil {
 
      */
 
-    val spark = new SparkContext("local[*]", "test-graphx")
+    val spark = SparkSession.builder().appName("test-goscore").master("local[*]").getOrCreate()
 
-    val nodes : RDD[(VertexId, String)] = spark.parallelize(Seq((1, "a"), (2, "b"), (3, "c"), (4, "d"), (5, "e"), (6, "f"), (7, "g"), (8, "h")))
-    val edges : RDD[Edge[Int]] = spark.parallelize(Seq(Edge(1, 3, 1), Edge(2, 3, 1), Edge(3, 4, 1), Edge(3, 5, 1), Edge(4, 6, 1), Edge(5, 6, 1), Edge(6, 7, 1), Edge(6, 8, 1)))
+    val nodes : RDD[(VertexId, String)] = spark.sparkContext.parallelize(Seq((1, "a"), (2, "b"), (3, "c"), (4, "d"), (5, "e"), (6, "f"), (7, "g"), (8, "h"), (9, "i")))
+    val edges : RDD[Edge[Int]] = spark.sparkContext.parallelize(Seq(Edge(1, 3, 1), Edge(2, 3, 1), Edge(3, 4, 1), Edge(3, 5, 1), Edge(4, 6, 1), Edge(5, 6, 1), Edge(6, 7, 1), Edge(6, 8, 1), Edge(9, 5, 1)))
     val graph = Graph(nodes, edges)
 
-    println(commonAncestors(graph, "d", "e").mkString("Array(", ", ", ")"))
+    val graphFrame = GraphFrame.fromGraphX(graph)
+
+    println(commonAncestors(graphFrame, "d", "e").mkString("Array(", ", ", ")"))
   }
 
-  def commonAncestors(g: Graph[String, Int], n1:String, n2:String) : Array[(VertexId, (String, (Boolean, Boolean)))] = {
-    var graph = g.mapVertices((_, name) => (name, (name == n1, name == n2)))
+  def commonAncestors(g: GraphFrame, n1:String, n2:String) : Array[String] = {
+    var graph = g.toGraphX.mapVertices((_, row) => (row.getString(1), (row.getString(1) == n1, row.getString(1) == n2)))
 
     graph = graph.pregel((false, false), activeDirection=EdgeDirection.In)(
       (_, vertex, new_visited) => (vertex._1, (vertex._2._1 || new_visited._1, vertex._2._2 || new_visited._2)),
@@ -57,56 +59,8 @@ object graphUtil {
       (visited1, visited2) => (visited1._1 || visited2._1, visited1._2 || visited2._2)
     )
 
-    graph.vertices.collect()
+    graph.vertices.filter(v_attr => v_attr._2._2._1 && v_attr._2._2._2).mapValues(v_attr => v_attr._1).values.collect()
   }
-
-  def commonAncestors(g: GraphFrame, n1:String, n2:String): Unit = {
-
-    var inputGraph = g.toGraphX.mapVertices((_, attr) => {
-      val vertex = (attr.getString(0),Array(if(attr.getString(0)==n1)1 else 0,if(attr.getString(0)==n2)1 else 0))
-      vertex
-    })
-
-    inputGraph=inputGraph.pregel(Array.fill(2)(0),20,EdgeDirection.Either)(
-      (_, attr, newArr) =>{
-        val minDist = Array.ofDim[Int](newArr.length)
-
-        for (i <- newArr.indices)
-          minDist(i) = math.max(attr._2(i), newArr(i))
-
-        (attr._1, minDist)
-      },
-      triplet => {
-        val minDist = Array.ofDim[Int](triplet.srcAttr._2.length)
-        var updated = false
-
-        for (i <- triplet.srcAttr._2.indices)
-          if (triplet.srcAttr._2(i) > triplet.dstAttr._2(i)) {
-            minDist(i) = triplet.srcAttr._2(i)
-            updated = true
-          }
-          else
-            minDist(i) = triplet.dstAttr._2(i)
-
-        if (updated)
-          Iterator((triplet.dstId, minDist))
-        else
-          Iterator.empty
-      },
-      (dist1, dist2) => {
-        val minDist = Array.ofDim[Int](dist1.length)
-
-        for (i <- dist1.indices)
-          minDist(i) = math.max(dist1(i), dist2(i))
-
-        minDist
-      }
-    )
-    inputGraph.vertices.foreach(t=>println(t._2._1+" "+t._2._2(0).toString+" "+t._2._2(1).toString))
-
-    System.out.println(inputGraph.vertices.values.filter(t=>(t._2(0)+t._2(1)==2)).count());
-  }
-
 
   /* def dijkstra(g: GraphFrame, sourceNode:String, weightIndex:Int,spark: SparkSession)= {
 
@@ -261,9 +215,6 @@ object graphUtil {
     val output = spark.createDataFrame(outputRDD, schema)
     return output
   }
-
-*/
-
-
+ */
 
 }
