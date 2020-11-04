@@ -2,6 +2,8 @@ package it.kazaam.service;
 
 import com.google.common.collect.Sets;
 import it.kazaam.repository.GONeo4jRepository;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.sql.SparkSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import scala.Tuple2;
@@ -15,8 +17,12 @@ public class GOTermService {
     private AnnotationService annotationService = null;
     @Autowired
     private GONeo4jRepository goNeo4jRepository = null;
+    @Autowired
+    private JavaSparkContext jsc;
 
     public Double goTermSimilarity(Set<Long> terms1, Set<Long> terms2) {
+        SparkSession spark = new SparkSession(JavaSparkContext.toSparkContext(jsc));
+
         int i = 0;
         double average = 0.0;
         for (Long t : terms1) {
