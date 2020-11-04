@@ -3,10 +3,20 @@ package it.kazaam.service;
 import com.google.common.collect.Sets;
 import it.kazaam.repository.GONeo4jRepository;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.rdd.RDD;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.types.StructType;
+import org.graphframes.GraphFrame;
+import org.neo4j.spark.Neo4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ppiscala.graphUtil;
+import ppispark.util.IOfunction;
+import scala.Predef;
 import scala.Tuple2;
+import scala.collection.JavaConverters;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -20,9 +30,11 @@ public class GOTermService {
     @Autowired
     private JavaSparkContext jsc;
 
+    private GraphFrame graph;
+
     public Double goTermSimilarity(Set<Long> terms1, Set<Long> terms2) {
         SparkSession spark = new SparkSession(JavaSparkContext.toSparkContext(jsc));
-
+        graph= IOfunction.GoImport(spark,"51.178.139.69:7687","neo4j","4dm1n1str4t0r");
         int i = 0;
         double average = 0.0;
         for (Long t : terms1) {
@@ -70,13 +82,13 @@ public class GOTermService {
 
     private Set<Long> getCommDisjAncestors(Long id1, Long id2) {
         Set<Long> commDisjAncestors = new HashSet<>();
-        Set<Long> commAncestors = getCommonAncestors(id1, id2);
+        String[] commAncestors = getCommonAncestors(id1, id2);
         Set<Tuple2<Long, Long>> disjAnc = getDisjAncestors(id1, getAncestors(id1));
         disjAnc.addAll(getDisjAncestors(id2, getAncestors(id2)));
         List<Tuple2<Long, Double>> ic_values = new ArrayList<>();
-        for (Long id : commAncestors) {
-            Double ic = goIC(id);
-            ic_values.add(new Tuple2<>((Long) id, ic));
+        for (String id : commAncestors) {
+            Double ic = goIC(Long.parseLong(id));
+            ic_values.add(new Tuple2<>(Long.parseLong(id), ic));
         }
         ic_values.sort((x, y) -> x._2.compareTo(y._2));
         for (int i = 0; i < ic_values.size() - 1; i++) {
@@ -96,8 +108,9 @@ public class GOTermService {
      * @param id2 second GOTerm id
      * @return Common ancestors
      */
-    private Set<Long> getCommonAncestors(Long id1, Long id2) {
-        return Sets.intersection(getAncestors(id1), getAncestors(id2));
+    private String[] getCommonAncestors(Long id1, Long id2) {
+        //return Sets.intersection(getAncestors(id1), getAncestors(id2));
+        return graphUtil.commonAncestors(graph,Long.toString(id1),Long.toString(id2));
     }
 
     /**

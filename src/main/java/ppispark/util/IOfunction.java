@@ -122,6 +122,25 @@ public class IOfunction {
         MongoSpark.write(graph.edges()).option("collection", nodesCollection).mode("overwrite").save();
 
     }
+
+    public static GraphFrame GoImport(SparkSession spark,String url, String user, String password) {
+        spark.sparkContext().conf()//.set("spark.neo4j.encryption.status","false")
+                .set("spark.neo4j.url", "bolt://"+url)
+                .set("spark.neo4j.user", user)
+                .set("spark.neo4j.password", password);
+
+        StructType schemaEdges=new StructType().add("src","String").add("dst","String");
+
+        Neo4j conn = new Neo4j(spark.sparkContext());
+
+        RDD<Row> rddEdges=conn.cypher("MATCH (a)-[r]->(b) RETURN toString(a.gGOid),toString(b.GOid)",JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
+
+        Dataset<Row> edges=spark.createDataFrame(rddEdges.toJavaRDD(),schemaEdges);
+
+        GraphFrame output=GraphFrame.fromEdges(edges);
+
+        return output;
+    }
     //NEO4J
     public static GraphFrame fromNeo4j(SparkSession spark,String url, String user, String password, String id) {
         spark.sparkContext().conf()//.set("spark.neo4j.encryption.status","false")
