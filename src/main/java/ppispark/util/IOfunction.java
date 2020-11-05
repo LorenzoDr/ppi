@@ -132,7 +132,8 @@ public class IOfunction {
 
         ClassTag<Long> longTag = scala.reflect.ClassTag$.MODULE$.apply(Long.class);
 
-        return Neo4jGraph.loadGraph(spark, "MATCH (n) return n.GOid", "MATCH (n1)-[e]->(n2) return n1.GOid, n2.GOid, 1", longTag, longTag);
+        // todo: think about more useful attributes
+        return Neo4jGraph.loadGraph(spark, "MATCH (n) RETURN n.GOid AS id, n.GOid", "MATCH (n1)-[e]->(n2) RETURN n1.GOid, n2.GOid, 1", longTag, longTag);
     }
 
     //NEO4J

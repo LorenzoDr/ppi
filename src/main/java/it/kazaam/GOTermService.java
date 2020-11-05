@@ -26,15 +26,17 @@ public class GOTermService {
     }
 
     public Double goTermSimilarity(Set<Long> terms1, Set<Long> terms2) {
-//        int i = 0;
-        double average = 0.0;
+        return 0.0;
 
-        for (Long t : terms1) {
-            average += (maxSimilarityBetweenTerms(t, terms2) / terms1.size());
-//            i++;
-        }
-
-        return average;
+////        int i = 0;
+//        double average = 0.0;
+//
+//        for (Long t : terms1) {
+//            average += (maxSimilarityBetweenTerms(t, terms2) / terms1.size());
+////            i++;
+//        }
+//
+//        return average;
     }
 
     private Double maxSimilarityBetweenTerms(Long term, Set<Long> terms) {
@@ -102,8 +104,8 @@ public class GOTermService {
      * @return Common ancestors
      */
     private Set<Long> getCommonAncestors(Long id1, Long id2) {
-        return Sets.intersection(getAncestors(id1), getAncestors(id2));
-//        return JavaConverters.setAsJavaSet(graphUtil.commonAncestors(graph, id1, id2));
+//        return Sets.intersection(getAncestors(id1), getAncestors(id2));
+        return JavaConverters.setAsJavaSetConverter(graphUtil.commonAncestors(graph, id1, id2)).asJava();
     }
 
     /**

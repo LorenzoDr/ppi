@@ -9,12 +9,14 @@ public class Main {
     public static void main(String[] args) {
         String protein1 = args[0];
         String protein2 = args[1];
-        String master = "yarn";
+        String master = "local[*]";
 
-        String ip_neo4j = "35.195.207.150"; // 51.178.139.69";
+        boolean our_db = false;
+        String ip_neo4j = our_db ? "35.195.207.150" : "51.178.139.69";
+        String pass = our_db? "ppinetwork" : "4dm1n1str4t0r";
 
         AnnotationService annotationService = new AnnotationService("mongodb://root:4dm1n1str4t0r@51.178.139.69:9086/?authSource=admin");
-        GOTermService goTermService = new GOTermService(String.format("bolt://%s:7687", ip_neo4j), "neo4j", "4dm1n1str4t0r", master, annotationService);
+        GOTermService goTermService = new GOTermService(String.format("bolt://%s:7687", ip_neo4j), "neo4j", pass, master, annotationService);
 
         // Identifico i termini associati alle due proteine
         Set<Long> terms1 = annotationService.getDistinctGOTermByProtein(protein1);
