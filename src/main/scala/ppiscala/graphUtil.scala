@@ -102,8 +102,25 @@ object graphUtil {
     graph.vertices.filter(v_attr => (v_attr._2._1 == a1 || v_attr._2._1 == a2) && v_attr._2._2 == 1).count() == 2
   }
 
-  def ancestors(g: Graph[java.lang.Long, java.lang.Long], c:Long) : Set[Long] = {
-    null // todo
+  def ancestors(g: Graph[java.lang.Long, java.lang.Long], c:Long) : Set[java.lang.Long] = {
+
+    var graph = g.mapVertices((_, goID) => (goID, goID == c))
+
+    graph = graph.pregel(false, activeDirection=EdgeDirection.In)(
+      (_, vertex, new_visited) => (vertex._1, (vertex._2 || new_visited)),
+      triplet => {
+        val to_update = (!triplet.srcAttr._2 && triplet.dstAttr._2)
+
+        if (to_update)
+          Iterator((triplet.srcId, (triplet.srcAttr._2 || triplet.dstAttr._2)))
+        else
+          Iterator.empty
+      },
+      (visited1, visited2) => (visited1 || visited2)
+    )
+
+    graph.vertices.filter(v_attr => v_attr._2._2).mapValues(v_attr => v_attr._1).values.collect().toSet
+
   }
 
   /* def dijkstra(g: GraphFrame, sourceNode:String, weightIndex:Int,spark: SparkSession)= {
