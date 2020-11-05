@@ -11,7 +11,7 @@ public class Main {
         String protein2 = args[1];
         String master = "local[*]";
 
-        boolean our_db = false;
+        boolean our_db = true;
         String ip_neo4j = our_db ? "35.195.207.150" : "51.178.139.69";
         String pass = our_db? "ppinetwork" : "4dm1n1str4t0r";
 
