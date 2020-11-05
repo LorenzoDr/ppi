@@ -3,8 +3,8 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '5.2.0'
 }
 
-group 'org.example'
-version '1.0-SNAPSHOT'
+group 'it.sapienza.dss'
+version '1.0'
 
 repositories {
     mavenCentral()
@@ -28,7 +28,7 @@ shadowJar.zip64 = true
 
 jar {
     manifest {
-        attributes 'Main-Class': 'ppispark.MainCloud'
+        attributes 'Main-Class': 'it.kazaam.Main'
     }
 }
 
@@ -37,41 +37,26 @@ java {
     targetCompatibility = JavaVersion.VERSION_1_8
 }
 
-configurations {
-    compile.exclude group:'ch.qos.logback'
-}
-
 dependencies {
-//    testCompile group: 'junit', name: 'junit', version: '4.12'
-
     // https://mvnrepository.com/artifact/org.apache.spark/spark-sql
-    compile group: 'org.apache.spark', name: 'spark-sql_2.12', version: '2.4.5'
+    compile group: 'org.apache.spark', name: 'spark-sql_2.11', version: '2.4.5'
 
     // https://mvnrepository.com/artifact/org.apache.spark/spark-graphx
-    compile group: 'org.apache.spark', name: 'spark-graphx_2.12', version: '2.4.5'
+    compile group: 'org.apache.spark', name: 'spark-graphx_2.11', version: '2.4.5'
 
     // https://mvnrepository.com/artifact/graphframes/graphframes
-    compile group: 'graphframes', name: 'graphframes', version: '0.8.1-spark2.4-s_2.12'
+    compile group: 'graphframes', name: 'graphframes', version: '0.8.1-spark2.4-s_2.11'
 
 
     // https://mvnrepository.com/artifact/org.neo4j.driver/neo4j-java-driver
-//    compile group: 'org.neo4j.driver', name: 'neo4j-java-driver', version: '4.1.1'
+    compile group: 'org.neo4j.driver', name: 'neo4j-java-driver', version: '4.1.1'
 
     // https://mvnrepository.com/artifact/org.apache.spark/spark-graphx
-    compile group: 'neo4j-contrib', name: 'neo4j-spark-connector', version: '2.4.5-M2'
+    compile group: 'neo4j-contrib', name: 'neo4j-spark-connector', version: '2.4.5-M1'
 
     // https://mvnrepository.com/artifact/org.mongodb.spark/mongo-spark-connector
-    compile group: 'org.mongodb.spark', name: 'mongo-spark-connector_2.12', version: '2.4.0'
+    compile group: 'org.mongodb.spark', name: 'mongo-spark-connector_2.11', version: '2.4.0'
 
-    compile group: 'org.springframework.boot', name: 'spring-boot-starter', version: '2.2.6.RELEASE'
-    compile group: 'org.springframework.boot', name: 'spring-boot-starter-web', version: '2.2.6.RELEASE'
-    compile group: 'org.springframework.boot', name: 'spring-boot-devtools', version: '2.2.6.RELEASE'
-    compile group: 'org.springframework.boot', name: 'spring-boot-starter-data-mongodb', version: '2.2.6.RELEASE'
-    compile group: 'org.mongodb', name: 'mongo-java-driver', version: '3.11.2'
-    compile group: 'org.springframework.data', name: 'spring-data-neo4j', version: '5.2.6.RELEASE'
-    compile group: 'org.neo4j.driver', name: 'neo4j-java-driver', version: '4.0.1'
-    compile group: 'org.apache.spark', name: 'spark-core_2.12', version: '2.4.5'
-    compile group: 'org.modelmapper', name: 'modelmapper', version: '2.3.0'
-
-    compile 'com.google.code.gson:gson:2.8.6'
+    // https://mvnrepository.com/artifact/org.mongodb/mongo-java-driver
+    compile group: 'org.mongodb', name: 'mongo-java-driver', version: '3.12.7'
 }

@@ -34,17 +34,17 @@ object graphUtil {
 
     val spark = SparkSession.builder().appName("test-goscore").master("local[*]").getOrCreate()
 
-    val nodes : RDD[(VertexId, String)] = spark.sparkContext.parallelize(Seq((1, "a"), (2, "b"), (3, "c"), (4, "d"), (5, "e"), (6, "f"), (7, "g"), (8, "h"), (9, "i")))
-    val edges : RDD[Edge[Int]] = spark.sparkContext.parallelize(Seq(Edge(1, 3, 1), Edge(2, 3, 1), Edge(3, 4, 1), Edge(3, 5, 1), Edge(4, 6, 1), Edge(5, 6, 1), Edge(6, 7, 1), Edge(6, 8, 1), Edge(9, 5, 1)))
+    val nodes : RDD[(VertexId, java.lang.Long)] = spark.sparkContext.parallelize(Seq((1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8), (9, 9)))
+    val edges : RDD[Edge[java.lang.Long]] = spark.sparkContext.parallelize(Seq(Edge(1, 3, 1), Edge(2, 3, 1), Edge(3, 4, 1), Edge(3, 5, 1), Edge(4, 6, 1), Edge(5, 6, 1), Edge(6, 7, 1), Edge(6, 8, 1), Edge(9, 5, 1)))
     val graph = Graph(nodes, edges)
 
-    val graphFrame = GraphFrame.fromGraphX(graph)
+//    val graphFrame = GraphFrame.fromGraphX(graph)
 
-    println(commonAncestors(graphFrame, "d", "e").mkString("Array(", ", ", ")"))
+    println(commonAncestors(graph, 4, 5).mkString("Array(", ", ", ")"))
   }
 
-  def commonAncestors(g: GraphFrame, id1:Long, id2:Long) : Array[Long] = {
-    var graph = g.toGraphX.mapVertices((_, row) => (row.getString(1), (row.getString(1) == id1, row.getString(1) == n2)))
+  def commonAncestors(g: Graph[java.lang.Long, java.lang.Long], id1:Long, id2:Long) : Set[java.lang.Long] = {
+    var graph = g.mapVertices((_, goID) => (goID, (goID == id1, goID == id2)))
 
     graph = graph.pregel((false, false), activeDirection=EdgeDirection.In)(
       (_, vertex, new_visited) => (vertex._1, (vertex._2._1 || new_visited._1, vertex._2._2 || new_visited._2)),
@@ -59,7 +59,7 @@ object graphUtil {
       (visited1, visited2) => (visited1._1 || visited2._1, visited1._2 || visited2._2)
     )
 
-    graph.vertices.filter(v_attr => v_attr._2._2._1 && v_attr._2._2._2).mapValues(v_attr => v_attr._1).values.collect()
+    graph.vertices.filter(v_attr => v_attr._2._2._1 && v_attr._2._2._2).mapValues(v_attr => v_attr._1).values.collect().toSet
   }
 
   /* def dijkstra(g: GraphFrame, sourceNode:String, weightIndex:Int,spark: SparkSession)= {

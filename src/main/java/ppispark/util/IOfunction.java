@@ -3,6 +3,7 @@ package ppispark.util;
 import com.mongodb.spark.MongoSpark;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.graphx.Graph;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -14,12 +15,15 @@ import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
 import org.neo4j.driver.Session;
 import org.neo4j.spark.Neo4j;
-import ppiscala.graphUtil;
+import org.neo4j.spark.Neo4jGraph;
 import scala.Predef;
 import scala.Tuple2;
 import scala.collection.JavaConverters;
+import scala.collection.mutable.ArrayBuffer;
+import scala.reflect.ClassTag;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class IOfunction {
@@ -123,22 +127,14 @@ public class IOfunction {
 
     }
 
-    public static GraphFrame GoImport(SparkSession spark,String url, String user, String password) {
-        spark.sparkContext().conf()//.set("spark.neo4j.encryption.status","false")
-                .set("spark.neo4j.url", "bolt://"+url)
-                .set("spark.neo4j.user", user)
-                .set("spark.neo4j.password", password);
+    public static Graph<Long, Long> GoImport(SparkContext spark, String url, String user, String password) {
+        spark.conf().set("spark.neo4j.url", "bolt://"+url).set("spark.neo4j.user", user).set("spark.neo4j.password", password);
 
-        StructType schemaEdges = new StructType().add("src","String").add("dst","String");
+        ClassTag<Long> longTag = scala.reflect.ClassTag$.MODULE$.apply(Long.class);
 
-        Neo4j conn = new Neo4j(spark.sparkContext());
-
-        RDD<Row> rddEdges = conn.cypher("MATCH (a)-[r]->(b) RETURN toString(a.GOid),toString(b.GOid)",JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.conforms())).loadRowRdd();
-
-        Dataset<Row> edges = spark.createDataFrame(rddEdges.toJavaRDD(),schemaEdges);
-
-        return GraphFrame.fromEdges(edges);
+        return Neo4jGraph.loadGraph(spark, "MATCH (n) return n.GOid", "MATCH (n1)-[e]->(n2) return n1.GOid, n2.GOid, 1", longTag, longTag);
     }
+
     //NEO4J
     public static GraphFrame fromNeo4j(SparkSession spark,String url, String user, String password, String id) {
         spark.sparkContext().conf()//.set("spark.neo4j.encryption.status","false")
