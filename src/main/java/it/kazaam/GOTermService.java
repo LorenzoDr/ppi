@@ -1,12 +1,6 @@
 package it.kazaam;
 
-import com.google.common.collect.Sets;
-import org.apache.spark.SparkContext;
-import org.apache.spark.graphx.Graph;
-import ppiscala.graphUtil;
-import ppispark.util.IOfunction;
 import scala.Tuple2;
-import scala.collection.JavaConverters;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -15,14 +9,12 @@ public class GOTermService {
 
     private final AnnotationService annotationService;
     private final GONeo4JService goNeo4JService;
-    private final SparkContext spark;
-    private final Graph<Long, Long> graph;
+    private final GOSparkService goSparkService;
 
     public GOTermService(String uri, String user, String pass, String master, AnnotationService annotationService) {
         this.annotationService = annotationService;
         goNeo4JService = new GONeo4JService(uri, user, pass);
-        spark = new SparkContext(master, "PPISpark");
-        graph = IOfunction.GoImport(spark,uri.substring(uri.lastIndexOf('/')+1), user, pass);
+        goSparkService = new GOSparkService(master, uri, user, pass);
     }
 
     public Double goTermSimilarity(Set<Long> terms1, Set<Long> terms2) {
@@ -53,7 +45,7 @@ public class GOTermService {
      */
     public Double goIC(Long id) {
 //        List<Long> successors = goNeo4JService.findSuccessors(id);
-        Set<Long> successors = graphUtil.successors(graph, id);
+        Set<Long> successors = goSparkService.findSuccessors(id);
         double probability = 0d;
         Long maxFreq = maxFrequence("biological process");
         for (Object node : successors) {
@@ -102,7 +94,7 @@ public class GOTermService {
      */
     private Set<Long> getCommonAncestors(Long id1, Long id2) {
 //        return Sets.intersection(getAncestors(id1), getAncestors(id2));
-        return graphUtil.commonAncestors(graph, id1, id2);
+        return goSparkService.getCommonAncestors(id1, id2);
     }
 
     /**
@@ -140,7 +132,7 @@ public class GOTermService {
 //        }
 //        return result;
 
-        return graphUtil.disjointAncestors(graph, c, ancestors);
+        return goSparkService.getDisjAncestors(c, ancestors);
     }
 
     public Set<Long> getAncestors(Long node) {
@@ -151,7 +143,7 @@ public class GOTermService {
 //        }
 //        return ancestors;
 
-        return graphUtil.ancestors(graph, node);
+        return goSparkService.getAncestors(node);
     }
 
     public List<List<Long>> getPaths(Long startNode, Long endNode) {
