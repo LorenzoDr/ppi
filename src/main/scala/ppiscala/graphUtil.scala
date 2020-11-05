@@ -14,6 +14,8 @@ import org.apache.spark.graphx.lib.PageRank
 import org.neo4j.spark._
 import org.neo4j.spark.cypher.{NameProp, Pattern}
 
+import scala.collection.{JavaConverters, mutable}
+
 
 
 object graphUtil {
@@ -40,10 +42,10 @@ object graphUtil {
 
 //    val graphFrame = GraphFrame.fromGraphX(graph)
 
-    println(commonAncestors(graph, 4, 5).mkString("Array(", ", ", ")"))
+//    println(commonAncestors(graph, 4, 5).mkString("Array(", ", ", ")"))
   }
 
-  def commonAncestors(g: Graph[java.lang.Long, java.lang.Long], c1:Long, c2:Long) : Set[java.lang.Long] = {
+  def commonAncestors(g: Graph[java.lang.Long, java.lang.Long], c1:Long, c2:Long) : util.Set[java.lang.Long] = {
     var graph = g.mapVertices((_, goID) => (goID, (goID == c1, goID == c2)))
 
     graph = graph.pregel((false, false), activeDirection=EdgeDirection.In)(
@@ -59,11 +61,13 @@ object graphUtil {
       (visited1, visited2) => (visited1._1 || visited2._1, visited1._2 || visited2._2)
     )
 
-    graph.vertices.filter(v_attr => v_attr._2._2._1 && v_attr._2._2._2).mapValues(v_attr => v_attr._1).values.collect().toSet
+    val set = graph.vertices.filter(v_attr => v_attr._2._2._1 && v_attr._2._2._2).mapValues(v_attr => v_attr._1).values.collect().toSet
+
+    JavaConverters.setAsJavaSetConverter(set).asJava
   }
 
-  def disjointAncestors(g: Graph[java.lang.Long, java.lang.Long], c: Long) : scala.collection.mutable.Set[(java.lang.Long, java.lang.Long)] = {
-    val ancestors_set = ancestors(g, c)
+  def disjointAncestors(g: Graph[java.lang.Long, java.lang.Long], c: Long, ancestors: util.Set[java.lang.Long]) : util.Set[(java.lang.Long, java.lang.Long)] = {
+    val ancestors_set = JavaConverters.asScalaSetConverter(ancestors).asScala
     val disjAncestors_set = scala.collection.mutable.Set[(java.lang.Long, java.lang.Long)]()
 
     for (a1 <- ancestors_set)
@@ -71,7 +75,7 @@ object graphUtil {
         if (a1 < a2 && areDisjointAncestors(g, c, a1, a2))
           disjAncestors_set.add(a1, a2)
 
-    disjAncestors_set
+    JavaConverters.mutableSetAsJavaSetConverter(disjAncestors_set).asJava
   }
 
   def areDisjointAncestors(g: Graph[java.lang.Long, java.lang.Long], c:Long, a1:Long, a2:Long) : Boolean = {
@@ -102,25 +106,45 @@ object graphUtil {
     graph.vertices.filter(v_attr => (v_attr._2._1 == a1 || v_attr._2._1 == a2) && v_attr._2._2 == 1).count() == 2
   }
 
-  def ancestors(g: Graph[java.lang.Long, java.lang.Long], c:Long) : Set[java.lang.Long] = {
+  def ancestors(g: Graph[java.lang.Long, java.lang.Long], c:Long) : util.Set[java.lang.Long] = {
 
     var graph = g.mapVertices((_, goID) => (goID, goID == c))
 
     graph = graph.pregel(false, activeDirection=EdgeDirection.In)(
       (_, vertex, new_visited) => (vertex._1, (vertex._2 || new_visited)),
       triplet => {
-        val to_update = (!triplet.srcAttr._2 && triplet.dstAttr._2)
 
-        if (to_update)
-          Iterator((triplet.srcId, (triplet.srcAttr._2 || triplet.dstAttr._2)))
+        if (!triplet.srcAttr._2 && triplet.dstAttr._2)
+          Iterator((triplet.srcId, true))
         else
           Iterator.empty
       },
       (visited1, visited2) => (visited1 || visited2)
     )
 
-    graph.vertices.filter(v_attr => v_attr._2._2).mapValues(v_attr => v_attr._1).values.collect().toSet
+    val set = graph.vertices.filter(v_attr => v_attr._2._2).mapValues(v_attr => v_attr._1).values.collect().toSet
 
+    JavaConverters.setAsJavaSetConverter(set).asJava
+
+  }
+
+  def successors(g: Graph[java.lang.Long, java.lang.Long], c:Long) : util.Set[java.lang.Long] = {
+    var graph = g.mapVertices((_, goID) => (goID, goID == c))
+
+    graph = graph.pregel((false), activeDirection=EdgeDirection.Out)(
+      (_, vertex, new_visited) => (vertex._1, vertex._2 || new_visited),
+      triplet => {
+        if (triplet.srcAttr._2 && !triplet.dstAttr._2)
+          Iterator((triplet.dstId, true))
+        else
+          Iterator.empty
+      },
+      (visited1, visited2) => visited1 || visited2
+    )
+
+    val set = graph.vertices.filter(v_attr => v_attr._2._2).mapValues(v_attr => v_attr._1).values.collect().toSet
+
+    JavaConverters.setAsJavaSetConverter(set).asJava
   }
 
   /* def dijkstra(g: GraphFrame, sourceNode:String, weightIndex:Int,spark: SparkSession)= {

@@ -9,7 +9,7 @@ public class Main {
     public static void main(String[] args) {
         String protein1 = args[0];
         String protein2 = args[1];
-        String master = "local[*]";
+        String master = "yarn";
 
         boolean our_db = true;
         String ip_neo4j = our_db ? "35.195.207.150" : "51.178.139.69";
