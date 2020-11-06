@@ -9,9 +9,9 @@ public class Main {
     public static void main(String[] args) {
         String protein1 = args[0];
         String protein2 = args[1];
-        String master = "local";
+        String master = "yarn";
 
-        boolean our_db = true;
+        boolean our_db = false;
         String ip_neo4j = our_db ? "35.195.207.150" : "51.178.139.69";
         String pass = our_db? "ppinetwork" : "4dm1n1str4t0r";
 
@@ -19,25 +19,18 @@ public class Main {
         GOTermService goTermService = new GOTermService(String.format("bolt://%s:7687", ip_neo4j), "neo4j", pass, master, annotationService);
 
         // Identifico i termini associati alle due proteine
-//        Set<Long> terms1 = annotationService.getDistinctGOTermByProtein(protein1);
-//        Set<Long> terms2 = annotationService.getDistinctGOTermByProtein(protein2);
+        Set<Long> terms1 = annotationService.getDistinctGOTermByProtein(protein1);
+        Set<Long> terms2 = annotationService.getDistinctGOTermByProtein(protein2);
 
-        Long id = 42537L; // terms1.iterator().next();
-        Set<Long> ancestors = goTermService.goSparkService.getAncestors(id);
-        System.out.println("id: " + id);
-        System.out.println("ancestors: " + ancestors);
-        System.out.println("Neo4j: " + goTermService.getDisjAncestors(id, ancestors));
-        System.out.println("Spark: " + goTermService.goSparkService.getDisjAncestors(id, ancestors));
-
-//        System.out.println(terms1);
-//        System.out.println(terms2);
+        System.out.println(terms1);
+        System.out.println(terms2);
 
         // Calcolo la similarità semantica di p1 con p2
-//        double p1 = goTermService.goTermSimilarity(terms1, terms2);
-//        double p2 = goTermService.goTermSimilarity(terms2, terms1);
-//        double similarity = (p1 + p2) / 2;
-//
-//        System.out.println(new Tuple3<>(protein1, protein2, similarity));
+        double p1 = goTermService.goTermSimilarity(terms1, terms2);
+        double p2 = goTermService.goTermSimilarity(terms2, terms1);
+        double similarity = (p1 + p2) / 2;
+
+        System.out.println(new Tuple3<>(protein1, protein2, similarity));
 
         goTermService.close();
     }
