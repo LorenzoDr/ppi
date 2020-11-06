@@ -41,7 +41,7 @@ object sparkServiceUtils {
     for (a1 <- ancestors_set)
       for (a2 <- ancestors_set)
         if (a1 < a2 && areDisjointAncestors(g, c, a1, a2))
-          disjAncestors_set.add(a1, a2)
+          disjAncestors_set.add((a1, a2))
 
     JavaConverters.mutableSetAsJavaSetConverter(disjAncestors_set).asJava
   }
@@ -71,7 +71,7 @@ object sparkServiceUtils {
                               else visited1 * visited2
     )
 
-    graph.vertices.filter(v_attr => (v_attr._2._1 == a1 || v_attr._2._1 == a2) && v_attr._2._2 == 1).count() == 2
+    graph.vertices.filter(v_attr => (v_attr._2._1 == a1 || v_attr._2._1 == a2) && v_attr._2._2 == 0).count() == 2
   }
 
   def ancestors(g: Graph[java.lang.Long, java.lang.Long], c:Long) : util.Set[java.lang.Long] = {
