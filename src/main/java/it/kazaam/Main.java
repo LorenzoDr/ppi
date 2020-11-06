@@ -9,7 +9,7 @@ public class Main {
     public static void main(String[] args) {
         String protein1 = args[0];
         String protein2 = args[1];
-        String master = "local[*]";
+        String master = "local";
 
         boolean our_db = true;
         String ip_neo4j = our_db ? "35.195.207.150" : "51.178.139.69";
@@ -19,11 +19,11 @@ public class Main {
         GOTermService goTermService = new GOTermService(String.format("bolt://%s:7687", ip_neo4j), "neo4j", pass, master, annotationService);
 
         // Identifico i termini associati alle due proteine
-        Set<Long> terms1 = annotationService.getDistinctGOTermByProtein(protein1);
-        Set<Long> terms2 = annotationService.getDistinctGOTermByProtein(protein2);
+//        Set<Long> terms1 = annotationService.getDistinctGOTermByProtein(protein1);
+//        Set<Long> terms2 = annotationService.getDistinctGOTermByProtein(protein2);
 
-        Long id = terms1.iterator().next();
-        Set<Long> ancestors = goTermService.getAncestors(id);
+        Long id = 42537L; // terms1.iterator().next();
+        Set<Long> ancestors = goTermService.goSparkService.getAncestors(id);
         System.out.println("id: " + id);
         System.out.println("ancestors: " + ancestors);
         System.out.println("Neo4j: " + goTermService.getDisjAncestors(id, ancestors));

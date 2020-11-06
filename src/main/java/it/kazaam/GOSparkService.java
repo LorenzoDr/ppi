@@ -49,6 +49,6 @@ public class GOSparkService {
         ClassTag<Long> longTag = scala.reflect.ClassTag$.MODULE$.apply(Long.class);
 
         // todo: think about more useful attributes
-        return Neo4j.apply(spark).partitions(100).pattern(new Tuple2<>("GOTerm", "GOid"), new Tuple2<>("IS_A", ""), new Tuple2<>("GOTerm", "GOid")).loadGraph(longTag, longTag);
+        return Neo4j.apply(spark).partitions(100).pattern(new Tuple2<>("GOTerm", "GOid"), new Tuple2<>("IS_A", "id"), new Tuple2<>("GOTerm", "GOid")).loadGraph(longTag, longTag);
     }
 }

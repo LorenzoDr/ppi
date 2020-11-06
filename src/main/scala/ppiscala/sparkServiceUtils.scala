@@ -40,7 +40,7 @@ object sparkServiceUtils {
 
     for (a1 <- ancestors_set)
       for (a2 <- ancestors_set)
-        if (a1 < a2 && areDisjointAncestors(g, c, a1, a2))
+        if (a1 < a2 && a1 != c && a2 != c && areDisjointAncestors(g, c, a1, a2))
           disjAncestors_set.add((a1, a2))
 
     JavaConverters.mutableSetAsJavaSetConverter(disjAncestors_set).asJava
@@ -54,12 +54,13 @@ object sparkServiceUtils {
 
       // se il nuovo valore è Inf (non dovrebbe succedere) tengo il valore, altrimenti è 1 solo se entrambi sono 1
       (_, vertex, new_visited) => if (new_visited == Integer.MAX_VALUE) vertex
+                                  else if (vertex._2 == Integer.MAX_VALUE) (vertex._1, new_visited)
                                   else (vertex._1, vertex._2 * new_visited),
 
       // invio il messaggio alla srg se la dst non è Inf, inviando 1 solo se la dst è a1 o a2
       triplet => {
-        if (triplet.dstAttr._2 != Integer.MAX_VALUE || triplet.srcAttr._2 != 0)
-          Iterator((triplet.srcId, if (triplet.dstAttr._1 == a1 || triplet.dstAttr._1 == a2) 1 else 0))
+        if (triplet.dstAttr._2 != Integer.MAX_VALUE && triplet.srcAttr._2 != 0)
+          Iterator((triplet.srcId, if (triplet.dstAttr._1 == a1 || triplet.dstAttr._1 == a2) 1 else triplet.dstAttr._2))
         else
           Iterator.empty
       },
