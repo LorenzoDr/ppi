@@ -56,7 +56,7 @@ object sparkServiceUtils {
 
       // invio il messaggio alla srg se la dst non è Inf, inviando 1 solo se la dst è a1 o a2
       triplet => {
-        if (triplet.dstAttr._2 != Integer.MAX_VALUE)
+        if (triplet.dstAttr._2 != Integer.MAX_VALUE || triplet.srcAttr._2 != 0)
           Iterator((triplet.srcId, if (triplet.dstAttr._1 == a1 || triplet.dstAttr._1 == a2) 1 else 0))
         else
           Iterator.empty
