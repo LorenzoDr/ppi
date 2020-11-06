@@ -9,7 +9,7 @@ public class Main {
     public static void main(String[] args) {
         String protein1 = args[0];
         String protein2 = args[1];
-        String master = "yarn";
+        String master = "local[*]";
 
         boolean our_db = false;
         String ip_neo4j = our_db ? "35.195.207.150" : "51.178.139.69";
@@ -25,12 +25,14 @@ public class Main {
         System.out.println(terms1);
         System.out.println(terms2);
 
-        // Calcolo la similarità semantica di p1 con p2
-        double p1 = goTermService.goTermSimilarity(terms1, terms2);
-        double p2 = goTermService.goTermSimilarity(terms2, terms1);
-        double similarity = (p1 + p2) / 2;
+        goTermService.goSparkService.goIC();
 
-        System.out.println(new Tuple3<>(protein1, protein2, similarity));
+//        // Calcolo la similarità semantica di p1 con p2
+//        double p1 = goTermService.goTermSimilarity(terms1, terms2);
+//        double p2 = goTermService.goTermSimilarity(terms2, terms1);
+//        double similarity = (p1 + p2) / 2;
+//
+//        System.out.println(new Tuple3<>(protein1, protein2, similarity));
 
         goTermService.close();
     }

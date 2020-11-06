@@ -17,6 +17,7 @@ import java.util.Set;
 
 public class GOSparkService {
 
+    private final static ClassTag<Long> longTag = scala.reflect.ClassTag$.MODULE$.apply(Long.class);
     private final Graph<Long, Long> graph;
 
     public GOSparkService(String master, String neo4j_uri, String neo4j_user, String neo4j_pass) {
@@ -45,8 +46,6 @@ public class GOSparkService {
 
     private static Graph<Long, Long> loadFromNeo4j(SparkContext spark, String uri, String user, String password) {
         spark.conf().set("spark.neo4j.url", "bolt://"+uri.substring(uri.lastIndexOf('/')+1)).set("spark.neo4j.user", user).set("spark.neo4j.password", password);
-
-        ClassTag<Long> longTag = scala.reflect.ClassTag$.MODULE$.apply(Long.class);
 
         // todo: think about more useful attributes
         return Neo4j.apply(spark).partitions(100).pattern(new Tuple2<>("GOTerm", "GOid"), new Tuple2<>("IS_A", "id"), new Tuple2<>("GOTerm", "GOid")).loadGraph(longTag, longTag);
