@@ -60,4 +60,7 @@ public class GONeo4JService {
         }
     }
 
+    public void close() {
+        neo4j.close();
+    }
 }

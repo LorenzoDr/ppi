@@ -1,10 +1,17 @@
 package it.kazaam;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.graphx.Graph;
+import org.apache.spark.graphx.PartitionStrategy;
+import org.neo4j.spark.Neo4j;
+import org.neo4j.spark.Neo4jGraph;
 import ppiscala.sparkServiceUtils;
 import ppispark.util.IOfunction;
 import scala.Tuple2;
+import scala.reflect.ClassTag;
 
 import java.util.Set;
 
@@ -13,8 +20,11 @@ public class GOSparkService {
     private final Graph<Long, Long> graph;
 
     public GOSparkService(String master, String neo4j_uri, String neo4j_user, String neo4j_pass) {
+        Logger.getLogger("org").setLevel(Level.WARN);
+        Logger.getLogger("akka").setLevel(Level.WARN);
+
         SparkContext spark = new SparkContext(master, "GOSparkService");
-        graph = IOfunction.GoImport(spark, neo4j_uri.substring(neo4j_uri.lastIndexOf('/')+1), neo4j_user, neo4j_pass);
+        graph = loadFromNeo4j(spark, neo4j_uri, neo4j_user, neo4j_pass);
     }
 
     public Set<Long> getAncestors(Long id) {
@@ -31,5 +41,14 @@ public class GOSparkService {
 
     public Set<Long> findSuccessors(Long id) {
         return sparkServiceUtils.successors(graph, id);
+    }
+
+    private static Graph<Long, Long> loadFromNeo4j(SparkContext spark, String uri, String user, String password) {
+        spark.conf().set("spark.neo4j.url", "bolt://"+uri.substring(uri.lastIndexOf('/')+1)).set("spark.neo4j.user", user).set("spark.neo4j.password", password);
+
+        ClassTag<Long> longTag = scala.reflect.ClassTag$.MODULE$.apply(Long.class);
+
+        // todo: think about more useful attributes
+        return Neo4j.apply(spark).partitions(100).pattern(new Tuple2<>("GOTerm", "GOid"), new Tuple2<>("IS_A", ""), new Tuple2<>("GOTerm", "GOid")).loadGraph(longTag, longTag);
     }
 }

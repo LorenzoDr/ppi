@@ -1,5 +1,6 @@
 package it.kazaam;
 
+import com.google.common.collect.Sets;
 import scala.Tuple2;
 
 import java.util.*;
@@ -9,7 +10,7 @@ public class GOTermService {
 
     private final AnnotationService annotationService;
     private final GONeo4JService goNeo4JService;
-    private final GOSparkService goSparkService;
+    public final GOSparkService goSparkService;
 
     public GOTermService(String uri, String user, String pass, String master, AnnotationService annotationService) {
         this.annotationService = annotationService;
@@ -44,8 +45,8 @@ public class GOTermService {
      * @return IC
      */
     public Double goIC(Long id) {
-//        List<Long> successors = goNeo4JService.findSuccessors(id);
-        Set<Long> successors = goSparkService.findSuccessors(id);
+        List<Long> successors = goNeo4JService.findSuccessors(id);
+//        Set<Long> successors = goSparkService.findSuccessors(id);
         double probability = 0d;
         Long maxFreq = maxFrequence("biological process");
         for (Object node : successors) {
@@ -93,8 +94,8 @@ public class GOTermService {
      * @return Common ancestors
      */
     private Set<Long> getCommonAncestors(Long id1, Long id2) {
-//        return Sets.intersection(getAncestors(id1), getAncestors(id2));
-        return goSparkService.getCommonAncestors(id1, id2);
+        return Sets.intersection(getAncestors(id1), getAncestors(id2));
+//        return goSparkService.getCommonAncestors(id1, id2);
     }
 
     /**
@@ -107,43 +108,43 @@ public class GOTermService {
      * @return A set of couple (GOTerm_1, GOTerm_2) representing the disjoint ancestors of "c"
      */
     public Set<Tuple2<Long, Long>> getDisjAncestors(Long c, Set<Long> ancestors) {
-//        Set<Tuple2<Long, Long>> result = new HashSet<>();
-//        for (Long a1 : ancestors) {
-//            for (Long a2 : ancestors) {
-//                if (!a2.equals(a1))
-//                    // Verifico che a1 non sia negli ancestori di a2 e viceversa
-//                    if ((!getAncestors(a1).contains(a2)) &&
-//                            !(getAncestors(a2).contains(a1))) {
-//                        result.add(new Tuple2<>(a1, a2));
-//                        // Se a1 appartiene agli ancestori di a2, verifico che a2 non sia negli ancestori di a1
-//                    } else if (!(getAncestors(a2).contains(a1))) {
-//                        // Verifico che, tra tutti i cammini da a1 a c, ce ne sia almeno uno che non contenga a2
-//                        List<List<Long>> paths = getPaths(a2, c);
-//                        boolean found = false;
-//                        for (int k = 0; k < paths.size() && !found; k++) {
-//                            // se il cammino i-esimo, tra tutti i cammini da a1 a c, non contiene a2, aggiungo la coppia (a1, a2) ai risultati e mi fermo
-//                            if (!paths.get(k).contains(a2)) {
-//                                result.add(new Tuple2<>(a1, a2));
-//                                found = true;
-//                            }
-//                        }
-//                    }
-//            }
-//        }
-//        return result;
+        Set<Tuple2<Long, Long>> result = new HashSet<>();
+        for (Long a1 : ancestors) {
+            for (Long a2 : ancestors) {
+                if (!a2.equals(a1))
+                    // Verifico che a1 non sia negli ancestori di a2 e viceversa
+                    if ((!getAncestors(a1).contains(a2)) &&
+                            !(getAncestors(a2).contains(a1))) {
+                        result.add(new Tuple2<>(a1, a2));
+                        // Se a1 appartiene agli ancestori di a2, verifico che a2 non sia negli ancestori di a1
+                    } else if (!(getAncestors(a2).contains(a1))) {
+                        // Verifico che, tra tutti i cammini da a1 a c, ce ne sia almeno uno che non contenga a2
+                        List<List<Long>> paths = getPaths(a2, c);
+                        boolean found = false;
+                        for (int k = 0; k < paths.size() && !found; k++) {
+                            // se il cammino i-esimo, tra tutti i cammini da a1 a c, non contiene a2, aggiungo la coppia (a1, a2) ai risultati e mi fermo
+                            if (!paths.get(k).contains(a2)) {
+                                result.add(new Tuple2<>(a1, a2));
+                                found = true;
+                            }
+                        }
+                    }
+            }
+        }
+        return result;
 
-        return goSparkService.getDisjAncestors(c, ancestors);
+//        return goSparkService.getDisjAncestors(c, ancestors);
     }
 
     public Set<Long> getAncestors(Long node) {
-//        Set<Long> ancestors = new HashSet<>();
-//        ancestors.add(node);
-//        for (List<Long> path : goNeo4JService.findAncestors(node)) {
-//            ancestors.addAll(path);
-//        }
-//        return ancestors;
+        Set<Long> ancestors = new HashSet<>();
+        ancestors.add(node);
+        for (List<Long> path : goNeo4JService.findAncestors(node)) {
+            ancestors.addAll(path);
+        }
+        return ancestors;
 
-        return goSparkService.getAncestors(node);
+//        return goSparkService.getAncestors(node);
     }
 
     public List<List<Long>> getPaths(Long startNode, Long endNode) {
@@ -160,5 +161,10 @@ public class GOTermService {
                 return annotationService.countByGOId(8150L);
         }
         return null;
+    }
+
+    public void close() {
+        annotationService.close();
+        goNeo4JService.close();
     }
 }

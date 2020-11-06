@@ -127,15 +127,6 @@ public class IOfunction {
 
     }
 
-    public static Graph<Long, Long> GoImport(SparkContext spark, String url, String user, String password) {
-        spark.conf().set("spark.neo4j.url", "bolt://"+url).set("spark.neo4j.user", user).set("spark.neo4j.password", password);
-
-        ClassTag<Long> longTag = scala.reflect.ClassTag$.MODULE$.apply(Long.class);
-
-        // todo: think about more useful attributes
-        return Neo4jGraph.loadGraph(spark, "MATCH (n) RETURN n.GOid AS id, n.GOid", "MATCH (n1)-[e]->(n2) RETURN n1.GOid, n2.GOid, 1", longTag, longTag);
-    }
-
     //NEO4J
     public static GraphFrame fromNeo4j(SparkSession spark,String url, String user, String password, String id) {
         spark.sparkContext().conf()//.set("spark.neo4j.encryption.status","false")

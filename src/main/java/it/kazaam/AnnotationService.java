@@ -15,11 +15,12 @@ import static com.mongodb.client.model.Filters.*;
 
 public class AnnotationService {
 
+    private final MongoClient driver;
     private final MongoCollection<Document> annotations;
 
     public AnnotationService(String uri) {
-        MongoClientURI connectionString = new MongoClientURI(uri);
-        annotations = new MongoClient(connectionString).getDatabase("protein-db").getCollection("annotation");
+        driver = new MongoClient(new MongoClientURI(uri));
+        annotations = driver.getDatabase("protein-db").getCollection("annotation");
     }
 
     public Long countByGOId(long id) {
@@ -35,5 +36,9 @@ public class AnnotationService {
                 and(eq("_id", 0),
                         eq("goID", 1),
                         eq("symbol", 1))).into(new ArrayList<>());
+    }
+
+    public void close() {
+        driver.close();
     }
 }

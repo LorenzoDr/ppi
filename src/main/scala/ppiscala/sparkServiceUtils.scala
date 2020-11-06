@@ -2,9 +2,11 @@ package ppiscala
 
 import java.util
 
+import org.apache.spark.SparkContext
 import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
+import org.neo4j.spark.Neo4jGraph
 
 import scala.collection.JavaConverters
 

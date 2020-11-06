@@ -9,7 +9,7 @@ public class Main {
     public static void main(String[] args) {
         String protein1 = args[0];
         String protein2 = args[1];
-        String master = "yarn";
+        String master = "local[*]";
 
         boolean our_db = true;
         String ip_neo4j = our_db ? "35.195.207.150" : "51.178.139.69";
@@ -22,15 +22,24 @@ public class Main {
         Set<Long> terms1 = annotationService.getDistinctGOTermByProtein(protein1);
         Set<Long> terms2 = annotationService.getDistinctGOTermByProtein(protein2);
 
-        System.out.println(terms1);
-        System.out.println(terms2);
+        Long id = terms1.iterator().next();
+        Set<Long> ancestors = goTermService.getAncestors(id);
+        System.out.println("id: " + id);
+        System.out.println("ancestors: " + ancestors);
+        System.out.println("Neo4j: " + goTermService.getDisjAncestors(id, ancestors));
+        System.out.println("Spark: " + goTermService.goSparkService.getDisjAncestors(id, ancestors));
+
+//        System.out.println(terms1);
+//        System.out.println(terms2);
 
         // Calcolo la similarità semantica di p1 con p2
-        double p1 = goTermService.goTermSimilarity(terms1, terms2);
-        double p2 = goTermService.goTermSimilarity(terms2, terms1);
-        double similarity = (p1 + p2) / 2;
+//        double p1 = goTermService.goTermSimilarity(terms1, terms2);
+//        double p2 = goTermService.goTermSimilarity(terms2, terms1);
+//        double similarity = (p1 + p2) / 2;
+//
+//        System.out.println(new Tuple3<>(protein1, protein2, similarity));
 
-        System.out.println(new Tuple3<>(protein1, protein2, similarity));
+        goTermService.close();
     }
 
 }
