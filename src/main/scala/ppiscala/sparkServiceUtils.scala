@@ -50,16 +50,16 @@ object sparkServiceUtils {
 
     graph = graph.pregel(false, activeDirection=EdgeDirection.In)(
 
-      (_, vertex, new_visited) => (vertex._1, vertex._2 || new_visited),
+      (_, vertex, new_value) => (vertex._1, vertex._2 || new_value),
 
       triplet => {
-        if (triplet.dstAttr._1 != a1 && triplet.dstAttr._1 != a2)
+        if (!triplet.srcAttr._2 && triplet.dstAttr._2 && triplet.dstAttr._1 != a1 && triplet.dstAttr._1 != a2)
           Iterator((triplet.srcId, true))
         else
           Iterator.empty
       },
 
-      (visited1, visited2) => visited1 || visited2
+      (value1, value2) => value1 || value2
     )
 
     graph.vertices.filter(v_attr => (v_attr._2._1 == a1 || v_attr._2._1 == a2) && v_attr._2._2).count() == 2
