@@ -59,4 +59,7 @@ dependencies {
 
     // https://mvnrepository.com/artifact/org.mongodb/mongo-java-driver
     compile group: 'org.mongodb', name: 'mongo-java-driver', version: '3.12.7'
+
+    // https://mvnrepository.com/artifact/org.mongodb.spark/mongo-spark-connector
+    compile group: 'org.mongodb.spark', name: 'mongo-spark-connector_2.11', version: '2.4.2'
 }

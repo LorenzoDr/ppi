@@ -1,40 +1,67 @@
 package it.kazaam;
 
-import com.google.common.collect.Sets;
+import org.apache.spark.SparkContext;
+
 import scala.Tuple2;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class GOTermService {
-
-    private final AnnotationService annotationService;
-    private final GONeo4JService goNeo4JService;
     public final GOSparkService goSparkService;
+    private final Map<Long, Long> frequencies;
+    private final HashMap<String, Long> maxFrequence;
 
-    public GOTermService(String uri, String user, String pass, String master, AnnotationService annotationService) {
-        this.annotationService = annotationService;
-        goNeo4JService = new GONeo4JService(uri, user, pass);
-        goSparkService = new GOSparkService(master, uri, user, pass);
+    public GOTermService(SparkContext spark, AnnotationService annotationService) {
+        goSparkService = new GOSparkService(spark);
+
+        this.frequencies = annotationService.annotations.mapToPair(doc -> new Tuple2<>(doc.getLong("goID"), 1L)).countByKey();
+
+        maxFrequence = new HashMap<>();
+        maxFrequence.put("molecular function", annotationService.countByGOId(3674L));
+        maxFrequence.put("cellular component", annotationService.countByGOId(5575L));
+        maxFrequence.put("biological process", annotationService.countByGOId(8150L));
     }
 
     public Double goTermSimilarity(Set<Long> terms1, Set<Long> terms2) {
         double average = 0.0;
 
+        Map<Long, Double> id_ic_map = computeIC(terms1, terms2);
+
+        System.out.println("IC computed!");
+
         for (Long t : terms1) {
-            average += (maxSimilarityBetweenTerms(t, terms2) / terms1.size());
+            average += (maxSimilarityBetweenTerms(t, terms2, id_ic_map) / terms1.size());
         }
 
         return average;
     }
 
-    private Double maxSimilarityBetweenTerms(Long term, Set<Long> terms) {
-        return Collections.max(terms.stream().map(t -> goSimilarityJin(term, t)).collect(Collectors.toList()));
+    private Map<Long, Double> computeIC(Set<Long> terms1, Set<Long> terms2) {
+        Set<Long> ids = new HashSet<>(terms1);
+        ids.addAll(terms2);
+
+        for (long term : terms1)
+            ids.addAll(goSparkService.getAncestors(term));
+
+        for (long term : terms2)
+            ids.addAll(goSparkService.getAncestors(term));
+
+        HashMap<Long, Double> id_ic_map = new HashMap<>();
+
+        for (long term : ids)
+            id_ic_map.put(term, goIC(term));
+
+        return id_ic_map;
     }
 
-    public Double goSimilarityJin(Long id1, Long id2) {
-        Double share = shareGrasm(id1, id2);
-        return 1 / ((goIC(id1) + goIC(id2) - 2 * share) + 1);
+    private Double maxSimilarityBetweenTerms(Long term, Set<Long> terms, Map<Long, Double> id_ic_map) {
+        return Collections.max(terms.stream().map(t -> goSimilarityJin(term, t, id_ic_map)).collect(Collectors.toList()));
+    }
+
+    public Double goSimilarityJin(Long id1, Long id2, Map<Long, Double> id_ic_map) {
+        Double share = shareGrasm(id1, id2, id_ic_map);
+        return 1 / ((id_ic_map.get(id1) + id_ic_map.get(id2) - 2 * share) + 1);
     }
 
     /**
@@ -49,30 +76,31 @@ public class GOTermService {
         Set<Long> successors = goSparkService.findSuccessors(id);
         double probability = 0d;
         Long maxFreq = maxFrequence("biological process");
-        for (Object node : successors) {
-            double occurrency = annotationService.countByGOId(Long.parseLong(node.toString().split("\\.")[0])) + 0d;
+        for (Long node : successors) {
+            double occurrency = frequencies.getOrDefault(node, 0L).doubleValue();
             probability += occurrency / maxFreq;
         }
+
         return -Math.log(probability);
     }
 
-    public Double shareGrasm(Long id1, Long id2) {
-        Set<Long> commDisjAncestor = getCommDisjAncestors(id1, id2);
+    public Double shareGrasm(Long id1, Long id2, Map<Long, Double> id_ic_map) {
+        Set<Long> commDisjAncestor = getCommDisjAncestors(id1, id2, id_ic_map);
         double average = 0.0;
         for (Long ancestor : commDisjAncestor) {
-            average += (goIC(ancestor) / commDisjAncestor.size());
+            average += (id_ic_map.get(ancestor) / commDisjAncestor.size());
         }
         return average;
     }
 
-    private Set<Long> getCommDisjAncestors(Long id1, Long id2) {
+    private Set<Long> getCommDisjAncestors(Long id1, Long id2, Map<Long, Double> id_ic_map) {
         Set<Long> commDisjAncestors = new HashSet<>();
         Set<Long> commAncestors = getCommonAncestors(id1, id2);
         Set<Tuple2<Long, Long>> disjAnc = getDisjAncestors(id1, getAncestors(id1));
         disjAnc.addAll(getDisjAncestors(id2, getAncestors(id2)));
         List<Tuple2<Long, Double>> ic_values = new ArrayList<>();
         for (long id : commAncestors) {
-            Double ic = goIC(id);
+            Double ic = id_ic_map.get(id);
             ic_values.add(new Tuple2<>(id, ic));
         }
         ic_values.sort((x, y) -> x._2.compareTo(y._2));
@@ -147,24 +175,16 @@ public class GOTermService {
         return goSparkService.getAncestors(node);
     }
 
-    public List<List<Long>> getPaths(Long startNode, Long endNode) {
-        return goNeo4JService.findPathsFromNodeToNode(startNode, endNode);
-    }
+//    public List<List<Long>> getPaths(Long startNode, Long endNode) {
+//        return goNeo4JService.findPathsFromNodeToNode(startNode, endNode);
+//    }
 
     public Long maxFrequence(String aspect) {
-        switch (aspect) {
-            case "molecular function":
-                return annotationService.countByGOId(3674L);
-            case "cellular component":
-                return annotationService.countByGOId(5575L);
-            case "biological process":
-                return annotationService.countByGOId(8150L);
-        }
-        return null;
+        return maxFrequence.get(aspect);
     }
 
-    public void close() {
-        annotationService.close();
-        goNeo4JService.close();
-    }
+//    public void close() {
+//        annotationService.close();
+//        goNeo4JService.close();
+//    }
 }
