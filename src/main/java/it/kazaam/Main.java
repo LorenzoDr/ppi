@@ -14,7 +14,7 @@ public class Main {
         String protein2 = args[1];
         String master = "yarn";
 
-        boolean our_neo4j = false;
+        boolean our_neo4j = true;
 
         String neo4j_ip = our_neo4j ? "35.195.207.150" : "51.178.139.69";
         String neo4j_port = "7687";
@@ -31,6 +31,8 @@ public class Main {
         Logger.getLogger("org").setLevel(Level.WARN);
         Logger.getLogger("akka").setLevel(Level.WARN);
 
+        long start = System.currentTimeMillis();
+
         SparkContext spark = new SparkContext(master, "GOSparkService");
 
         spark.conf().
@@ -42,8 +44,8 @@ public class Main {
         Set<Long> terms1 = annotationService.getDistinctGOTermByProtein(protein1);
         Set<Long> terms2 = annotationService.getDistinctGOTermByProtein(protein2);
 
-        System.out.println(terms1);
-        System.out.println(terms2);
+        System.out.println("Terms of " + protein1 + ": " + terms1);
+        System.out.println("Terms of " + protein2 + ": " + terms2);
 
         GOTermService goTermService = new GOTermService(spark, annotationService);
 
@@ -51,6 +53,8 @@ public class Main {
         double p1 = goTermService.goTermSimilarity(terms1, terms2);
         double p2 = goTermService.goTermSimilarity(terms2, terms1);
         double similarity = (p1 + p2) / 2;
+
+        System.out.printf("T(m) total: %.3f\n", ((System.currentTimeMillis() - start) / 60.0 / 1000));
 
         System.out.println(new Tuple3<>(protein1, protein2, similarity));
     }

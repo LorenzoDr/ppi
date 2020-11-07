@@ -56,7 +56,18 @@ public class GOTermService {
     }
 
     private Double maxSimilarityBetweenTerms(Long term, Set<Long> terms, Map<Long, Double> id_ic_map) {
-        return Collections.max(terms.stream().map(t -> goSimilarityJin(term, t, id_ic_map)).collect(Collectors.toList()));
+        double max_similarity = Double.MIN_VALUE;
+
+        for (Long t: terms){
+            long start = System.currentTimeMillis();
+            double sim = goSimilarityJin(term, t, id_ic_map);
+            System.out.println("T(m) similarityJin: " + ((System.currentTimeMillis() - start) / 1000.0 / 60));
+
+            if (max_similarity < sim)
+                max_similarity = sim;
+        }
+
+        return max_similarity;
     }
 
     public Double goSimilarityJin(Long id1, Long id2, Map<Long, Double> id_ic_map) {
