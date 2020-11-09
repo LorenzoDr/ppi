@@ -12,9 +12,9 @@ public class Main {
     public static void main(String[] args) {
         String protein1 = args[0];
         String protein2 = args[1];
-        String master = "yarn";
+        String master = "local[*]";
 
-        boolean our_neo4j = true;
+        boolean our_neo4j = false;
 
         String neo4j_ip = our_neo4j ? "35.195.207.150" : "51.178.139.69";
         String neo4j_port = "7687";

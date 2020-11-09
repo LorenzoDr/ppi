@@ -106,9 +106,19 @@ public class GOTermService {
 
     private Set<Long> getCommDisjAncestors(Long id1, Long id2, Map<Long, Double> id_ic_map) {
         Set<Long> commDisjAncestors = new HashSet<>();
+
+        long start = System.currentTimeMillis();
         Set<Long> commAncestors = getCommonAncestors(id1, id2);
+        System.out.println((System.currentTimeMillis() - start) / 1000.0 / 60);
+
+        start = System.currentTimeMillis();
         Set<Tuple2<Long, Long>> disjAnc = getDisjAncestors(id1, getAncestors(id1));
+        System.out.println((System.currentTimeMillis() - start) / 1000.0 / 60);
+
+        start = System.currentTimeMillis();
         disjAnc.addAll(getDisjAncestors(id2, getAncestors(id2)));
+        System.out.println((System.currentTimeMillis() - start) / 1000.0 / 60);
+
         List<Tuple2<Long, Double>> ic_values = new ArrayList<>();
         for (long id : commAncestors) {
             Double ic = id_ic_map.get(id);
