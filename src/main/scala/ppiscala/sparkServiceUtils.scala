@@ -35,6 +35,7 @@ object sparkServiceUtils {
 
   def disjointAncestors(g: Graph[java.lang.Long, java.lang.Long], c: Long, ancestors: util.Set[java.lang.Long]) : util.Set[(java.lang.Long, java.lang.Long)] = {
     val ancestors_set = JavaConverters.asScalaSetConverter(ancestors).asScala
+
     val disjointAncestors_set = mutable.Set[(java.lang.Long, java.lang.Long)]()
 
     for (a1 <- ancestors_set if a1 != c) {
@@ -80,8 +81,10 @@ object sparkServiceUtils {
     val pair_set = mutable.Set[(java.lang.Long, java.lang.Long)]()
 
     for (i <- a2_array.indices)
-      if (graph.vertices.filter(v_attr => (v_attr._2._1 == a1 || v_attr._2._1 == a2_array(i)) && v_attr._2._2(i)).count() == 2)
-        pair_set.add(a1, a2_array(i))
+      if (graph.vertices.filter(v_attr => (v_attr._2._1 == a1 || v_attr._2._1 == a2_array(i)) && v_attr._2._2(i)).count() == 2) {
+        pair_set.add((a1, a2_array(i)))
+        pair_set.add((a2_array(i), a1))
+      }
 
     pair_set
   }
