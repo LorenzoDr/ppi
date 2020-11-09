@@ -27,6 +27,14 @@ public class GOSparkService {
         return sparkServiceUtils.disjointAncestors(graph, id, ancestors);
     }
 
+    public Set<Tuple2<Long, Long>> getDisjAncestors(Long id1, Set<Long> ancestors1, Long id2, Set<Long> ancestors2) {
+        return sparkServiceUtils.disjointAncestors(graph, id1, ancestors1, id2, ancestors2, 400);
+    }
+
+    public Set<Tuple2<Long, Long>> getDisjAncestors(Long id1, Set<Long> ancestors1, Long id2, Set<Long> ancestors2, int batch_size) {
+        return sparkServiceUtils.disjointAncestors(graph, id1, ancestors1, id2, ancestors2, batch_size);
+    }
+
     public Set<Long> getCommonAncestors(Long id1, Long id2) {
         return sparkServiceUtils.commonAncestors(graph, id1, id2);
     }

@@ -5,7 +5,6 @@ import org.apache.spark.SparkContext;
 import scala.Tuple2;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class GOTermService {
     public final GOSparkService goSparkService;
@@ -107,17 +106,10 @@ public class GOTermService {
     private Set<Long> getCommDisjAncestors(Long id1, Long id2, Map<Long, Double> id_ic_map) {
         Set<Long> commDisjAncestors = new HashSet<>();
 
-        long start = System.currentTimeMillis();
         Set<Long> commAncestors = getCommonAncestors(id1, id2);
-        System.out.println((System.currentTimeMillis() - start) / 1000.0 / 60);
-
-        start = System.currentTimeMillis();
-        Set<Tuple2<Long, Long>> disjAnc = getDisjAncestors(id1, getAncestors(id1));
-        System.out.println((System.currentTimeMillis() - start) / 1000.0 / 60);
-
-        start = System.currentTimeMillis();
-        disjAnc.addAll(getDisjAncestors(id2, getAncestors(id2)));
-        System.out.println((System.currentTimeMillis() - start) / 1000.0 / 60);
+//        Set<Tuple2<Long, Long>> disjAnc = getDisjAncestors(id1, getAncestors(id1));
+//        disjAnc.addAll(getDisjAncestors(id2, getAncestors(id2)));
+        Set<Tuple2<Long, Long>> disjAnc = getDisjAncestors(id1, getAncestors(id1), id2, getAncestors(id2));
 
         List<Tuple2<Long, Double>> ic_values = new ArrayList<>();
         for (long id : commAncestors) {
@@ -183,6 +175,10 @@ public class GOTermService {
 //        return result;
 
         return goSparkService.getDisjAncestors(c, ancestors);
+    }
+
+    public Set<Tuple2<Long, Long>> getDisjAncestors(Long c1, Set<Long> ancestors1, Long c2, Set<Long> ancestors2) {
+        return goSparkService.getDisjAncestors(c1, ancestors1, c2, ancestors2);
     }
 
     public Set<Long> getAncestors(Long node) {
