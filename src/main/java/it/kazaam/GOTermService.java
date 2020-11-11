@@ -8,10 +8,12 @@ import java.util.*;
 
 public class GOTermService {
     public final GOSparkService goSparkService;
+    public final AnnotationService annotationService;
     private final Map<Long, Long> frequencies;
     private final HashMap<String, Long> maxFrequence;
 
-    public GOTermService(SparkContext spark, AnnotationService annotationService) {
+    public GOTermService(SparkContext spark) {
+        annotationService = new AnnotationService(spark);
         goSparkService = new GOSparkService(spark);
 
         this.frequencies = annotationService.annotations.mapToPair(doc -> new Tuple2<>(doc.getLong("goID"), 1L)).countByKey();
@@ -20,6 +22,59 @@ public class GOTermService {
         maxFrequence.put("molecular function", annotationService.countByGOId(3674L));
         maxFrequence.put("cellular component", annotationService.countByGOId(5575L));
         maxFrequence.put("biological process", annotationService.countByGOId(8150L));
+    }
+
+    public Double goSimilarity(String protein1, String protein2) {
+        Set<Long> terms1 = annotationService.getDistinctGOTermByProtein(protein1);
+        Set<Long> terms2 = annotationService.getDistinctGOTermByProtein(protein2);
+
+        System.out.println("Terms of " + protein1 + ": " + terms1);
+        System.out.println("Terms of " + protein2 + ": " + terms2);
+
+        Map<Long, Double> id_ic_map = computeIC(terms1, terms2);
+
+        System.out.println("IC computed!");
+
+        Map<Long, Map<Long, Double>> similarity = new HashMap<>(terms1.size() + terms2.size());
+
+        for (long t1 : terms1)
+            similarity.put(t1, new HashMap<>(terms2.size()));
+
+        for (long t2 : terms2)
+            similarity.put(t2, new HashMap<>(terms1.size()));
+
+        for (long t1 : terms1)
+            for (long t2 : terms2) {
+                long start = System.currentTimeMillis();
+                double sim_jin = goSimilarityJin(t1, t2, id_ic_map);
+                System.out.println("T(m) similarityJin: " + ((System.currentTimeMillis() - start) / 1000.0 / 60));
+
+                similarity.get(t1).put(t2, sim_jin);
+                similarity.get(t2).put(t1, sim_jin);
+            }
+
+        return (goTermSimilarity(terms1, terms2, similarity) + goTermSimilarity(terms2, terms1, similarity)) / 2;
+    }
+
+    public Double goTermSimilarity(Set<Long> terms1, Set<Long> terms2, Map<Long, Map<Long, Double>> similarity) {
+        double avg_sim = 0.0;
+
+        for (Long t1 : terms1) {
+            double max_sim = Double.MIN_VALUE;
+
+            for (Long t2 : terms2) {
+                double sim = similarity.get(t1).get(t2);
+
+                if (sim > max_sim)
+                    max_sim = sim;
+            }
+
+            avg_sim += max_sim;
+        }
+
+        avg_sim /= terms1.size();
+
+        return avg_sim;
     }
 
     public Double goTermSimilarity(Set<Long> terms1, Set<Long> terms2) {
@@ -34,6 +89,24 @@ public class GOTermService {
         }
 
         return average;
+    }
+
+    private Double maxSimilarityBetweenTerms(Long term, Set<Long> terms, Map<Long, Double> id_ic_map) {
+        double max_similarity = Double.MIN_VALUE;
+
+        for (Long t: terms){
+            double sim = goSimilarityJin(term, t, id_ic_map);
+
+            if (max_similarity < sim)
+                max_similarity = sim;
+        }
+
+        return max_similarity;
+    }
+
+    public Double goSimilarityJin(Long id1, Long id2, Map<Long, Double> id_ic_map) {
+        Double share = shareGrasm(id1, id2, id_ic_map);
+        return 1 / ((id_ic_map.get(id1) + id_ic_map.get(id2) - 2 * share) + 1);
     }
 
     private Map<Long, Double> computeIC(Set<Long> terms1, Set<Long> terms2) {
@@ -52,26 +125,6 @@ public class GOTermService {
             id_ic_map.put(term, goIC(term));
 
         return id_ic_map;
-    }
-
-    private Double maxSimilarityBetweenTerms(Long term, Set<Long> terms, Map<Long, Double> id_ic_map) {
-        double max_similarity = Double.MIN_VALUE;
-
-        for (Long t: terms){
-            long start = System.currentTimeMillis();
-            double sim = goSimilarityJin(term, t, id_ic_map);
-            System.out.println("T(m) similarityJin: " + ((System.currentTimeMillis() - start) / 1000.0 / 60));
-
-            if (max_similarity < sim)
-                max_similarity = sim;
-        }
-
-        return max_similarity;
-    }
-
-    public Double goSimilarityJin(Long id1, Long id2, Map<Long, Double> id_ic_map) {
-        Double share = shareGrasm(id1, id2, id_ic_map);
-        return 1 / ((id_ic_map.get(id1) + id_ic_map.get(id2) - 2 * share) + 1);
     }
 
     /**

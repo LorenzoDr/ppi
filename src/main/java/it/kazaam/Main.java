@@ -39,20 +39,11 @@ public class Main {
                 set("spark.neo4j.url", String.format("bolt://%s:%s", neo4j_ip, neo4j_port)).set("spark.neo4j.user", neo4j_user).set("spark.neo4j.password", neo4j_pass).
                 set("spark.mongodb.input.uri", String.format("mongodb://%s:%s@%s:%s/protein-db.annotation?authSource=admin", mongo_user, mongo_pass, mongo_ip, mongo_port));
 
-        AnnotationService annotationService = new AnnotationService(spark);
 
-        Set<Long> terms1 = annotationService.getDistinctGOTermByProtein(protein1);
-        Set<Long> terms2 = annotationService.getDistinctGOTermByProtein(protein2);
-
-        System.out.println("Terms of " + protein1 + ": " + terms1);
-        System.out.println("Terms of " + protein2 + ": " + terms2);
-
-        GOTermService goTermService = new GOTermService(spark, annotationService);
+        GOTermService goTermService = new GOTermService(spark);
 
         // Calcolo la similarità semantica di p1 con p2
-        double p1 = goTermService.goTermSimilarity(terms1, terms2);
-        double p2 = goTermService.goTermSimilarity(terms2, terms1);
-        double similarity = (p1 + p2) / 2;
+        double similarity = goTermService.goSimilarity(protein1, protein2);
 
         System.out.printf("T(m) total: %.3f\n", ((System.currentTimeMillis() - start) / 60.0 / 1000));
 
