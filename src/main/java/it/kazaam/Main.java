@@ -37,8 +37,10 @@ public class Main {
 
         spark.conf().
                 set("spark.neo4j.url", String.format("bolt://%s:%s", neo4j_ip, neo4j_port)).set("spark.neo4j.user", neo4j_user).set("spark.neo4j.password", neo4j_pass).
-                set("spark.mongodb.input.uri", String.format("mongodb://%s:%s@%s:%s/protein-db.annotation?authSource=admin", mongo_user, mongo_pass, mongo_ip, mongo_port));
+                set("spark.mongodb.input.uri", String.format("mongodb://%s:%s@%s:%s/protein-db.annotation?authSource=admin", mongo_user, mongo_pass, mongo_ip, mongo_port)).
+                set("spark.graphx.pregel.checkpointInterval", "10");
 
+        spark.setCheckpointDir("goterm_checkdir");
 
         GOTermService goTermService = new GOTermService(spark);
 

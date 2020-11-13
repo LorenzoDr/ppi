@@ -3,6 +3,7 @@ package it.kazaam;
 import com.mongodb.spark.MongoSpark;
 import com.mongodb.spark.rdd.api.java.JavaMongoRDD;
 import org.apache.spark.SparkContext;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.bson.Document;
 
@@ -11,10 +12,10 @@ import java.util.Set;
 
 public class AnnotationService {
 
-    public final JavaMongoRDD<Document> annotations;
+    public final JavaRDD<Document> annotations;
 
     public AnnotationService(SparkContext spark) {
-        annotations = MongoSpark.load(JavaSparkContext.fromSparkContext(spark));
+        annotations = MongoSpark.load(JavaSparkContext.fromSparkContext(spark)).cache();
     }
 
     public Long countByGOId(long id) {

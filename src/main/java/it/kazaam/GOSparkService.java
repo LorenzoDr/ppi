@@ -16,7 +16,7 @@ public class GOSparkService {
     private final Graph<Long, Long> graph;
 
     public GOSparkService(SparkContext spark) {
-        graph = loadGraph(spark);
+        graph = loadGraph(spark).cache();
     }
 
     public Set<Long> getAncestors(Long id) {
