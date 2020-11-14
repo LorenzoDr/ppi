@@ -18,51 +18,7 @@ import org.neo4j.spark.cypher.{NameProp, Pattern}
 
 object graphUtil {
 
-  def main(args: Array[String]): Unit = {
-    /*
-     a (1)   b (2)
-       \   /
-         c (3)  i (9)
-       /   \   /
-     d (4)   e (5)
-       \   /
-         f (6)
-       /   \
-     g (7)   h (8)
-
-     */
-
-    val spark = SparkSession.builder().appName("test-goscore").master("local[*]").getOrCreate()
-
-    val nodes : RDD[(VertexId, String)] = spark.sparkContext.parallelize(Seq((1, "a"), (2, "b"), (3, "c"), (4, "d"), (5, "e"), (6, "f"), (7, "g"), (8, "h"), (9, "i")))
-    val edges : RDD[Edge[Int]] = spark.sparkContext.parallelize(Seq(Edge(1, 3, 1), Edge(2, 3, 1), Edge(3, 4, 1), Edge(3, 5, 1), Edge(4, 6, 1), Edge(5, 6, 1), Edge(6, 7, 1), Edge(6, 8, 1), Edge(9, 5, 1)))
-    val graph = Graph(nodes, edges)
-
-    val graphFrame = GraphFrame.fromGraphX(graph)
-
-    println(commonAncestors(graphFrame, "d", "e").mkString("Array(", ", ", ")"))
-  }
-
-  def commonAncestors(g: GraphFrame, n1:String, n2:String) : Array[String] = {
-    var graph = g.toGraphX.mapVertices((_, row) => (row.getString(1), (row.getString(1) == n1, row.getString(1) == n2)))
-
-    graph = graph.pregel((false, false), activeDirection=EdgeDirection.In)(
-      (_, vertex, new_visited) => (vertex._1, (vertex._2._1 || new_visited._1, vertex._2._2 || new_visited._2)),
-      triplet => {
-        val to_update = (!triplet.srcAttr._2._1 && triplet.dstAttr._2._1) || (!triplet.srcAttr._2._2 && triplet.dstAttr._2._2)
-
-        if (to_update)
-          Iterator((triplet.srcId, (triplet.srcAttr._2._1 || triplet.dstAttr._2._1, triplet.srcAttr._2._2 || triplet.dstAttr._2._2)))
-        else
-          Iterator.empty
-      },
-      (visited1, visited2) => (visited1._1 || visited2._1, visited1._2 || visited2._2)
-    )
-
-    graph.vertices.filter(v_attr => v_attr._2._2._1 && v_attr._2._2._2).mapValues(v_attr => v_attr._1).values.collect()
-  }
-
-  /* def dijkstra(g: GraphFrame, sourceNode:String, weightIndex:Int,spark: SparkSession)= {
+  def dijkstra(g: GraphFrame, sourceNode:String, weightIndex:Int,spark: SparkSession)= {
 
      val initialGraph = g.toGraphX.mapVertices((_, attr) => {
        val vertex = (attr.getString(0), if (attr.getString(0) == sourceNode) 1.0 else 0.0)
@@ -83,19 +39,7 @@ object graphUtil {
      )
 
      distanceGraph.vertices.foreach(println)
-   }*/
-
-
-
-
-/*  def toNeo4J(g: GraphFrame,spark: SparkSession) = {
-
-    g.toGraphX.
-    //Neo4jGraph.saveGraph(spark.sparkContext, g.toGraphX, nodeProp = null, null, merge = true)
-
-  }*/
-
-/*
+   }
 
   def dfSchema(columnNames: List[String]): StructType =
     StructType(
@@ -215,6 +159,5 @@ object graphUtil {
     val output = spark.createDataFrame(outputRDD, schema)
     return output
   }
- */
 
 }
