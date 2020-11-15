@@ -12,7 +12,6 @@ import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
 import org.neo4j.driver.Session;
-import org.neo4j.spark.Neo4j;
 import scala.Predef;
 import scala.Tuple2;
 import scala.collection.JavaConverters;
@@ -41,7 +40,7 @@ public class Main {
                     .master("local[*]")
                     .appName("biograph")
                     .getOrCreate();
-            }
+        }
         else
             spark = SparkSession
                     .builder()
@@ -75,7 +74,7 @@ public class Main {
         ArrayList<Object> N = new ArrayList<>();
 
 
-       for (Row row : rows)
+        for (Row row : rows)
             N.add(row.getString(0));
 
         System.out.println("Number of vertices of the connected component maximizing nodes in N: " + F1(graph, N, 2).count());
@@ -96,14 +95,11 @@ public class Main {
         String password=local ? "Cirociro94":args[3];
         String[] nodesProp=new String[]{"name"};
         String[] edgeProp=new String[]{"alt_id_A", "alt_id_B"};
-
-       GraphFrame g1=importGraphFromNeo4j(spark,url,user,password,nodesProp,edgeProp);
-       System.out.println("Number of nodes imported from neo4j:" +g1.vertices().count());
-       System.out.println("Number of edges imported from neo4j:" +g1.edges().count());
+        
 
 
-       loadSubgraphToNeo4j(url,user,password,"subgraph1",g);
-       System.out.println("Loaded in neo4j the edges describing the subgraph of N and its x-neighbors");
+        loadSubgraphToNeo4j(url,user,password,"subgraph1",g);
+        System.out.println("Loaded in neo4j the edges describing the subgraph of N and its x-neighbors");
     }
 
     public static void loadSubgraphToNeo4j(String url, String user, String password,String reltype,GraphFrame graph){
@@ -112,7 +108,7 @@ public class Main {
         String cql;
 
         String[] prova=new String[]{"p8,p13","p1,p4"};
-       for(Row r:graph.edges().toJavaRDD().collect()){
+        for(Row r:graph.edges().toJavaRDD().collect()){
             cql="MATCH (a),(b) WHERE a.name='"+r.getString(0)+"' AND b.name='"+r.getString(1)+"' CREATE (a)-[r:"+reltype+"]->(b)";
             s.run(cql);
         }
@@ -267,197 +263,8 @@ public class Main {
             return 0;
         }
     }
-    public static GraphFrame importGraphFromNeo4j(SparkSession spark,String url, String user, String password, String[] nodesProperties, String[] edgesProperties) {
-        spark.sparkContext().conf()//.set("spark.neo4j.encryption.status","false")
-                .set("spark.neo4j.url", url)
-                .set("spark.neo4j.user", user)
-                .set("spark.neo4j.password", password);
-
-        StructType schemaVertices=new StructType().add("id","String");
-        StructType schemaEdges=new StructType().add("src","String").add("dst","String");
-
-        String nodesString="";
-        String edgesString="";
-        for(int i=1;i<nodesProperties.length;i++){
-            nodesString+=",toString(a."+nodesProperties[i]+")";
-            schemaVertices=schemaVertices.add(nodesProperties[i],"String");
-        }
-        for(int i=0;i<edgesProperties.length;i++){
-            edgesString+=",toString(r."+edgesProperties[i]+")";
-            schemaEdges=schemaEdges.add(edgesProperties[i],"String");
-        }
-        Neo4j conn = new Neo4j(spark.sparkContext());
-
-
-        RDD<Row> rddVertices=conn.cypher("MATCH (a) RETURN toString(a."+nodesProperties[0]+")"+nodesString, JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
-        RDD<Row> rddEdges=conn.cypher("MATCH (a)-[r]->(b) RETURN toString(a."+nodesProperties[0]+"),toString(b."+nodesProperties[0]+")"+edgesString,JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
 
 
 
-        Dataset<Row> vertices=spark.createDataFrame(rddVertices.toJavaRDD(),schemaVertices);
-        Dataset<Row> edges=spark.createDataFrame(rddEdges.toJavaRDD(),schemaEdges);
 
-        GraphFrame output=GraphFrame.apply(vertices,edges);
-
-
-        return output;
-    }
-
-
-    //FILTER NODES WHILE IMPORTING FROM NEO4J
-    public static GraphFrame filteredNodesFromNeo4j(SparkSession spark,String url, String user, String password, String[] nodesProperties, String[] edgesProperties,String[] conditions) {
-
-        spark.sparkContext().conf().set("spark.neo4j.encryption.status","false")
-                .set("spark.neo4j.url", url)
-                .set("spark.neo4j.user", user)
-                .set("spark.neo4j.password", password);
-
-        StructType schemaVertices=new StructType().add("id","String");
-        StructType schemaEdges=new StructType().add("src","String").add("dst","String");
-
-        String nodesString="";
-        String edgesString="";
-        String filter1="";
-        String filter2="";
-
-        for(int i=1;i<nodesProperties.length;i++){
-            nodesString+=",toString(a."+nodesProperties[i]+")";
-            schemaVertices=schemaVertices.add(nodesProperties[i],"String");
-        }
-        for(int i=1;i<conditions.length;i++){
-            filter1+="AND a."+conditions[i];
-            filter2+="AND a."+conditions[i];
-            filter2+="AND b."+conditions[i];
-        }
-        for(int i=0;i<edgesProperties.length;i++){
-            edgesString+=",toString(r."+edgesProperties[i]+")";
-            schemaEdges=schemaEdges.add(edgesProperties[i],"String");
-        }
-        Neo4j conn = new Neo4j(spark.sparkContext());
-
-
-        RDD<Row> rddVertices=conn.cypher("MATCH (a) WHERE a."+conditions[0]+" "+filter1+" RETURN toString(a."+nodesProperties[0]+")"+nodesString,JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
-        RDD<Row> rddEdges=conn.cypher("MATCH (a)-[r]->(b) WHERE a."+conditions[0]+" AND b."+conditions[0]+" "+filter2+" RETURN toString(a."+nodesProperties[0]+"),toString(b."+nodesProperties[0]+")"+edgesString,JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
-
-
-
-        Dataset<Row> vertices=spark.createDataFrame(rddVertices.toJavaRDD(),schemaVertices);
-        Dataset<Row> edges=spark.createDataFrame(rddEdges.toJavaRDD(),schemaEdges);
-
-
-        GraphFrame output=GraphFrame.apply(vertices,edges);
-
-        return output;
-    }
-
-    //FILTER EDGES WHILE IMPORTING
-    public static GraphFrame filteredEdgesFromNeo4j(SparkSession spark,String url, String user, String password, String[] nodesProperties, String[] edgesProperties,String[] conditions,boolean dropVertices) {
-
-        spark.sparkContext().conf().set("spark.neo4j.encryption.status","false")
-                .set("spark.neo4j.url", url)
-                .set("spark.neo4j.user", user)
-                .set("spark.neo4j.password", password);
-
-        StructType schemaVertices=new StructType().add("id","String");
-        StructType schemaEdges=new StructType().add("src","String").add("dst","String");
-
-        String nodesString="";
-        String edgesString="";
-        String filter="";
-
-
-        for(int i=1;i<nodesProperties.length;i++){
-            nodesString+=",toString(a."+nodesProperties[i]+")";
-            schemaVertices=schemaVertices.add(nodesProperties[i],"String");
-        }
-        for(int i=1;i<conditions.length;i++){
-            filter+="AND r."+conditions[i];
-        }
-        for(int i=0;i<edgesProperties.length;i++){
-            edgesString+=",toString(r."+edgesProperties[i]+")";
-            schemaEdges=schemaEdges.add(edgesProperties[i],"String");
-        }
-        Neo4j conn = new Neo4j(spark.sparkContext());
-
-
-        RDD<Row> rddVertices=conn.cypher("MATCH (a) RETURN toString(a."+nodesProperties[0]+")"+nodesString,JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
-        RDD<Row> rddEdges=conn.cypher("MATCH (a)-[r]->(b) WHERE r."+conditions[0]+filter+" RETURN toString(a."+nodesProperties[0]+"),toString(b."+nodesProperties[0]+")"+edgesString,JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
-
-
-
-        Dataset<Row> vertices=spark.createDataFrame(rddVertices.toJavaRDD(),schemaVertices);
-        Dataset<Row> edges=spark.createDataFrame(rddEdges.toJavaRDD(),schemaEdges);
-
-
-        GraphFrame output=GraphFrame.apply(vertices,edges);
-
-        if(dropVertices){
-            return output.dropIsolatedVertices();
-        }else{
-            return output;
-        }
-
-    }
-
-    public static GraphFrame filteredEdgesFromNeo4j(SparkSession spark,String url, String user, String password, String[] nodesLabels, String[] edgesProperties,String[] conditions){
-        return filteredEdgesFromNeo4j(spark,url,user,password,nodesLabels,edgesProperties,conditions,true);
-    }
-
-    //FILTER EDGES AND NODES WHILE IMPORTING
-    public static GraphFrame importGraphFromNeo4j(SparkSession spark,String url, String user, String password, String[] nodesProperties, String[] edgesProperties,String[] nodesConditions,String[] edgesConditions,boolean dropVertices) {
-
-        spark.sparkContext().conf().set("spark.neo4j.encryption.status","false")
-                .set("spark.neo4j.url", url)//"bolt://localhost:7687"
-                .set("spark.neo4j.user", user)//"neo4j"
-                .set("spark.neo4j.password",password );//"Cirociro94"
-
-        StructType schemaVertices=new StructType().add("id","String");
-        StructType schemaEdges=new StructType().add("src","String").add("dst","String");
-
-        String nodesString="";
-        String edgesString="";
-        String filter1="";
-        String filter2="";
-
-        for(int i=1;i<nodesProperties.length;i++){
-            nodesString+=",toString(a."+nodesProperties[i]+")";
-            schemaVertices=schemaVertices.add(nodesProperties[i],"String");
-        }
-        for(int i=1;i<nodesConditions.length;i++){
-            filter1+="AND a."+nodesConditions[i];
-            filter2+="AND a."+nodesConditions[i];
-            filter2+="AND b."+nodesConditions[i];
-        }
-        for(int i=0;i<edgesProperties.length;i++){
-            edgesString+=",toString(r."+edgesProperties[i]+")";
-            schemaEdges=schemaEdges.add(edgesProperties[i],"String");
-        }
-        for(int i=0;i<edgesConditions.length;i++){
-            filter2+="AND r."+edgesConditions[i];
-        }
-
-        Neo4j conn = new Neo4j(spark.sparkContext());
-
-
-        RDD<Row> rddVertices=conn.cypher("MATCH (a) WHERE a."+nodesConditions[0]+" "+filter1+" RETURN toString(a."+nodesProperties[0]+")"+nodesString,JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
-        RDD<Row> rddEdges=conn.cypher("MATCH (a)-[r]->(b) WHERE a."+nodesConditions[0]+" AND b."+nodesConditions[0]+" "+filter2+" RETURN toString(a."+nodesProperties[0]+"),toString(b."+nodesProperties[0]+")"+edgesString,JavaConverters.mapAsScalaMapConverter(new HashMap<String,Object>()).asScala().toMap( Predef.<Tuple2<String, Object>>conforms())).loadRowRdd();
-
-
-        Dataset<Row> vertices=spark.createDataFrame(rddVertices.toJavaRDD(),schemaVertices);
-        Dataset<Row> edges=spark.createDataFrame(rddEdges.toJavaRDD(),schemaEdges);
-
-        GraphFrame output=GraphFrame.apply(vertices,edges);
-
-        if(dropVertices){
-            return output.dropIsolatedVertices();
-        }
-        else{
-            return output;
-        }
-
-    }
-
-    public static GraphFrame importGraphFromNeo4j(SparkSession spark,String url, String user, String password, String[] nodesLabels, String[] edgesProperties,String[] nodesCondition,String[] edgesCondition){
-        return importGraphFromNeo4j(spark,url,user,password,nodesLabels,edgesProperties,nodesCondition,edgesCondition,true);
-    }
 }

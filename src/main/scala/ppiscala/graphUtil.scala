@@ -6,17 +6,26 @@ import org.graphframes.GraphFrame
 import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame,SaveMode, Dataset, Row, SparkSession}
 import java.util
 
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.lib.PageRank
 import org.neo4j.spark._
-import org.neo4j.spark.cypher.{NameProp, Pattern}
+import sun.security.util.Password
 
 
 
 object graphUtil {
+  def fromNeo4j(spark:SparkSession,url:String,user:String,password:String,label:String)={
+    spark.read.format("org.neo4j.spark.DataSource")
+      .option("url",url)
+      .option("authentication.basic.username",user)
+      .option("authentication.basic.password",password)
+      .option("labels", label)
+      .load()
+      .show()
+  }
 
   def dijkstra(g: GraphFrame, sourceNode:String, weightIndex:Int,spark: SparkSession)= {
 

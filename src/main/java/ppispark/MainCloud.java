@@ -16,7 +16,7 @@ import java.util.Arrays;
 
 public class MainCloud {
     public static void main(String[] args) {
-        SparkSession spark;
+      /*  SparkSession spark;
         String Isource = args[1];
         String Odest = args[2];
 
@@ -27,7 +27,9 @@ public class MainCloud {
         boolean local = true;
 
         Logger.getLogger("org").setLevel(Level.WARN);
-        Logger.getLogger("akka").setLevel(Level.WARN);
+        Logger.getLogger("akka").setLevel(Level.WARN);*/
+        SparkSession spark;
+        boolean local=true;
         if (local) {
             System.setProperty("hadoop.home.dir", "C:\\Users\\loren\\eclipse\\winutils");
             System.setProperty("spark.sql.legacy.allowUntypedScalaUDF", "true");
@@ -42,8 +44,9 @@ public class MainCloud {
                     .getOrCreate();
         }
 
+        graphUtil.fromNeo4j(spark,"bolt://localhost:7687","neo4j","Cirociro94","protein");
 
-        switch (Isource) {
+       /* switch (Isource) {
             case "neo4j":
                 Iparameters = args[3].split(",");
                 ppi = new PPInetwork(spark, Iparameters[0], Iparameters[1], Iparameters[2], Iparameters[3]);
@@ -59,12 +62,12 @@ public class MainCloud {
                 ppi = new PPInetwork(spark, args[3]);
                 weightIndex = 42;
                 break;
-        }
+        }*/
         //Dataset<Row> edges=ppi.getGraph().edges().withColumn("weight", org.apache.spark.sql.functions.lit(0));
         //GraphFrame graph1=GraphFrame.fromEdges(edges);
         //graphUtil.dijkstra(graph1,"uniprotkb:P51587",42,spark);
 
-        String[] functionArgs=Arrays.copyOfRange(args,5,args.length);
+       /* String[] functionArgs=Arrays.copyOfRange(args,5,args.length);
         GraphFrame output=GraphMiner.apply(ppi,spark,args[0],functionArgs,weightIndex);
 
 
@@ -81,6 +84,6 @@ public class MainCloud {
             default:
                 IOfunction.exportToTsv(spark,output,args[4]);
                 break;
-        }
+        }*/
     }
 }

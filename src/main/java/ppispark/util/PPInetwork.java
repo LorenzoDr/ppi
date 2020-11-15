@@ -40,7 +40,7 @@ public class PPInetwork {
 	//PPI FROM NEO4J
 	public PPInetwork(SparkSession spark,String url,String user,String password,String id){
 		this.spark=spark;
-		graph= IOfunction.fromNeo4j(spark,url,user,password,id);
+		//graph= IOfunction.fromNeo4j(spark,url,user,password,id);
 		spark.sparkContext().setCheckpointDir("PPI-Check");
 
 	}
