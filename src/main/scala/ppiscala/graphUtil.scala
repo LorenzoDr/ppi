@@ -5,6 +5,7 @@ import java.io.File
 import org.graphframes.GraphFrame
 import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
+
 import org.apache.spark.sql.types.{DoubleType, IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame,SaveMode, Dataset, Row, SparkSession}
 import java.util
@@ -17,15 +18,126 @@ import sun.security.util.Password
 
 
 object graphUtil {
-  def fromNeo4j(spark:SparkSession,url:String,user:String,password:String,label:String)={
-    spark.read.format("org.neo4j.spark.DataSource")
+
+  def nodesFromNeo4j(spark:SparkSession,url:String,user:String,password:String,propRef:String,condition:String): DataFrame ={
+
+    var wCondition=""
+    var properties=""
+
+    if(!condition.equals("")){
+      wCondition="WHERE p."+condition.split(",")(0)
+      for(i<-1 to condition.split(",").length-1){
+        wCondition+=" AND p."+condition.split(",")(i)+" "
+      }
+    }
+
+    if(!propRef.equals("")){
+      val propList=propRef.split(",")
+      for(i<-0 to propList.length-1){
+        properties+=",p."+propList(i)
+      }
+    }
+
+    val query="MATCH (p:protein) "+wCondition+" RETURN a.name"+properties
+
+
+    val output=spark.read.format("org.neo4j.spark.DataSource")
       .option("url",url)
       .option("authentication.basic.username",user)
       .option("authentication.basic.password",password)
-      .option("labels", label)
+      .option("query",query)
       .load()
-      .show()
+
+    return output
   }
+  def nodesFromNeo4j(spark:SparkSession,url:String,user:String,password:String,propRef:String)={
+    nodesFromNeo4j(spark,url,user,password,propRef,"")
+  }
+  def edgesFromNeo4j(spark:SparkSession,url:String,user:String,password:String,propRef:String,condition:String): DataFrame ={
+    var wCondition=""
+    var properties=""
+
+    if(!condition.equals("")){
+      wCondition="WHERE "+condition.split(",")(0)
+      for(i<-1 to condition.split(",").length-1){
+        wCondition+=" AND "+condition.split(",")(i)+" "
+      }
+    }
+
+    if(!propRef.equals("")){
+      val propList=propRef.split(",")
+      for(i<-0 to propList.length-1){
+        properties+=",r."+propList(i)
+      }
+    }
+    val query="MATCH (a:protein)-[r]->(b:protein) RETURN a.name AS src,b.name AS dst"
+
+    val output=spark.read.format("org.neo4j.spark.DataSource")
+      .option("url",url)
+      .option("authentication.basic.username",user)
+      .option("authentication.basic.password",password)
+      .option("query",query)
+      .load()
+
+    return output
+
+  }
+  def edgesFromNeo4j(spark:SparkSession,url:String,user:String,password:String,propRef:String)={
+    edgesFromNeo4j(spark,url,user,password,propRef,"")
+  }
+  def filteredEdgesFromNeo4j(spark:SparkSession,url:String,user:String,password:String,condition:String)={
+    edgesFromNeo4j(spark,url,user,password,"",condition)
+  }
+  def edgesFromNeo4j(spark:SparkSession,url:String,user:String,password:String)={
+      edgesFromNeo4j(spark,url,user,password,"","")
+  }
+
+
+  //EXPORT TO NEO4J
+
+  def graphToNeo4J(df:DataFrame,url:String,user:String,password: String,rel:String)={
+    val propertiesArray=df.drop("src").drop("dst").columns
+    var properties=propertiesArray(0);
+    for(i<-1 to propertiesArray.length-1){
+      properties+=","+propertiesArray(i)
+    }
+    df.write
+      .format("org.neo4j.spark.DataSource")
+      .option("url", url)
+      .option("authentication.basic.username",user)
+      .option("authentication.basic.password",password)
+      .option("relationship", "INTERACTION")
+      .option("relationship.save.strategy", "keys")
+      .option("relationship.source.labels", ":protein")
+      .option("relationship.source.save.mode", "overwrite")
+      .option("relationship.source.node.keys", "src:name")
+      .option("relationship.target.labels", ":protein")
+      .option("relationship.target.node.keys", "dst:name")
+      .option("relationship.target.save.mode", "overwrite")
+      .option("relationship.properties", properties)
+      .save()
+  }
+
+ def updateVertices(df:DataFrame,url:String,user:String,password: String,attr:String,referenceCol:String,properties:String)={
+   val propertiesList=properties.split(",")
+   var newProperties="p."+propertiesList(0)+"=event."+propertiesList(0)
+
+   if(propertiesList.length>1){
+     for(i<-1 to propertiesList.length-1){
+       newProperties+=","+"p."+propertiesList(i)+"=event."+propertiesList(i)
+     }
+   }
+
+   df.write
+     .format("org.neo4j.spark.DataSource")
+     .option("url", url)
+     .option("authentication.basic.username",user)
+     .option("authentication.basic.password",password)
+     .option("query", "MATCH (p:protein {"+attr+": event."+referenceCol+"}) SET "+newProperties)
+     .save()
+ }
+
+  // LONGEST PATH
 
   def dijkstra(g: GraphFrame, sourceNode:String, weightIndex:Int,spark: SparkSession)= {
 

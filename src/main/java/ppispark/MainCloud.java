@@ -1,18 +1,8 @@
 package ppispark;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.functions;
-import org.graphframes.GraphFrame;
 import ppiscala.graphUtil;
-import ppispark.util.GraphMiner;
-import ppispark.util.IOfunction;
 import ppispark.util.PPInetwork;
-
-import java.util.Arrays;
 
 public class MainCloud {
     public static void main(String[] args) {
@@ -31,7 +21,7 @@ public class MainCloud {
         SparkSession spark;
         boolean local=true;
         if (local) {
-            System.setProperty("hadoop.home.dir", "C:\\Users\\loren\\eclipse\\winutils");
+            //System.setProperty("hadoop.home.dir", "C:\\Users\\loren\\eclipse\\winutils");
             System.setProperty("spark.sql.legacy.allowUntypedScalaUDF", "true");
             spark = SparkSession.builder()
                     .master("local[*]")
@@ -44,7 +34,14 @@ public class MainCloud {
                     .getOrCreate();
         }
 
-        graphUtil.fromNeo4j(spark,"bolt://localhost:7687","neo4j","Cirociro94","protein");
+        PPInetwork ppi = new PPInetwork(spark, "data/ridotto.tsv");
+        ppi.vertices().show(50);
+
+        graphUtil.edgesFromNeo4j(spark,"bolt://localhost:7687","neo4j","Cirociro94");
+        //graphUtil.graphFromNeo4j(spark,"bolt://localhost:7687","neo4j","Cirociro94","protein","RELTYPE");
+        //graphUtil.graphToNeo4j(ppi.getGraph(),"bolt://localhost:7687","neo4j","Cirociro94");
+        //graphUtil.graphToNeo4J(ppi.edges(),"bolt://localhost:7687","neo4j","Cirociro94","r");
+        //graphUtil.updateVertices(ppi.getGraph(),"bolt://localhost:7687","neo4j","Cirociro94","name","id","degree");
 
        /* switch (Isource) {
             case "neo4j":

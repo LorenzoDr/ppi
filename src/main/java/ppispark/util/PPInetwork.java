@@ -1,17 +1,9 @@
 package ppispark.util;
 
-import java.io.IOException;
 import java.util.ArrayList;
 
-import org.apache.spark.SparkContext;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.*;
-import org.apache.spark.sql.types.*;
 import org.graphframes.GraphFrame;
-
-import ppiscala.graphUtil;
-import scala.Tuple2;
 
 public class PPInetwork {
 
@@ -22,18 +14,18 @@ public class PPInetwork {
 	//PPI FROM TSV
 	public PPInetwork(SparkSession spark, String inputPath){
 		this.spark=spark;
-		graph= IOfunction.importFromTsv(spark,inputPath);
+		graph= IOmanager.importFromTsv(spark,inputPath);
 		spark.sparkContext().setCheckpointDir("PPI-Check");
 	}
 	public PPInetwork(SparkSession spark, String inputPath, String CheckPath){
 		this.spark=spark;
-		graph= IOfunction.importFromTsv(spark,inputPath);
+		graph= IOmanager.importFromTsv(spark,inputPath);
 		spark.sparkContext().setCheckpointDir(CheckPath);
 	}
 	//PPI FROM MONGODB
 	public PPInetwork(SparkSession spark,String uri,String src,String dst){
 		this.spark=spark;
-		graph= IOfunction.importEdgesFromMongoDB(spark,uri,src,dst);
+		graph= IOmanager.importEdgesFromMongoDB(spark,uri,src,dst);
 		spark.sparkContext().setCheckpointDir("PPI-Check");
 
 	}
