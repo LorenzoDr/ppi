@@ -172,9 +172,17 @@ public class IOmanager {
             return GraphFrame.apply(graphUtil.filteredEdgesFromNeo4j(spark, url, user, password, filters), graphUtil.edgesFromNeo4j(spark, url, user, password, filters));
         }
     }
-
     public static GraphFrame importFromNeo4j(SparkSession spark, String url, String user, String password, String filters, boolean toProp) {
         return importFromNeo4j(spark, url, user, password, filters, toProp, false, "");
     }
 
+    //NEO4j:export functions
+
+    public static void toNeo4j(Dataset<Row> df,String url,String user,String password){
+        graphUtil.graphToNeo4J(df,url,user,password);
+    }
+
+    public static void updateNodes(Dataset<Row> df,String url,String user,String password,String attr,String ref_col,String properties){
+        graphUtil.updateVertices(df,url,user,password,attr,ref_col,properties);
+    }
 }

@@ -94,8 +94,7 @@ object graphUtil {
 
 
   //EXPORT TO NEO4J
-
-  def graphToNeo4J(df:DataFrame,url:String,user:String,password: String,rel:String)={
+  def graphToNeo4J(df:DataFrame,url:String,user:String,password: String)={
     val propertiesArray=df.drop("src").drop("dst").columns
     var properties=propertiesArray(0);
     for(i<-1 to propertiesArray.length-1){
